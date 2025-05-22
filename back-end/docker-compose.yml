@@ -8,6 +8,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+      FLASK_ENV: development
+      FLASK_APP: manage.py
     ports:
       - "5432:5432"
     volumes:
@@ -34,8 +36,11 @@ services:
       RDS_HOSTNAME: psql-db
       RDS_PORT: 5432
       RDS_DB_NAME: ${POSTGRES_DB}
+      FLASK_ENV: development
+      FLASK_APP: manage.py
     volumes:
       - ./app:/app/app
+      - ./migrations:/app/migrations
 
 volumes:
   # to persist the database tables
