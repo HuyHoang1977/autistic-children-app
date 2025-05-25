@@ -23,7 +23,7 @@ def create_app():
     # Import models for Flask-Migrate detect
     from app.models import models
     
-    from app.routers.user_routes import bp as auth_bp
+    from app.routers.user_router import bp as auth_bp
     app.register_blueprint(auth_bp)
     
     return app

@@ -1,5 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.models.models import User
+from app.middlewares.auth import authorize
+from app.role import ROLES
 from app.services.user_service import login_user, register_user
 from app.validations.user_validation import validate_login_data, validate_register_data
 
@@ -14,6 +16,7 @@ def get_users():
     ])
     
 @bp.route('/login', methods=['POST'])
+@authorize([ROLES['USER']])
 def login():
     data = request.get_json()
     errors = validate_login_data(data)
@@ -25,6 +28,7 @@ def login():
     return jsonify({"id": user.id, "name": user.name, "email": user.email}), 200
 
 @bp.route('/register', methods=['POST'])
+@authorize([ROLES['USER']])
 def register():
     data = request.get_json()
     errors = validate_register_data(data)
