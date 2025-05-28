@@ -1,7 +1,14 @@
-from flask import Flask
 import os
-from app.models.models import db
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from app.extensions import db
+from app.models.users_model import User
+from app.models.roles_model import Role
+from app.models.admins_model import Admin
+from app.models.doctors_model import Doctor
+from app.models.parents_model import Parent
 from flask_cors import CORS 
+
 
 def create_app():
 
@@ -19,9 +26,8 @@ def create_app():
 
     # connect the app to the database
     db.init_app(app)
-    
-    # Import models for Flask-Migrate detect
-    from app.models import models
+    with app.app_context():
+        db.create_all()
     
     from app.routers.user_router import bp as auth_bp
     app.register_blueprint(auth_bp)

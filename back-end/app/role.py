@@ -1,6 +1,5 @@
 ROLES = {
-    'ADMIN': 'admin',
-    'DOCTOR': 'doctor',
-    'PARENT': 'parent',
-    'USER': 'user',  # User thường, không cần login
+    'ADMIN': 1,
+    'DOCTOR': 2,
+    'PARENT': 3
 }

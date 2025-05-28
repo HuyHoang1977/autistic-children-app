@@ -7,11 +7,11 @@ export async function login(email: string, password: string) {
   return res.json();
 }
 
-export async function register(name: string, email: string, password: string) {
+export async function register(data: any) {
   const res = await fetch("http://localhost:5000/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, email, password }),
+    body: JSON.stringify(data),
   });
   return res.json();
 }

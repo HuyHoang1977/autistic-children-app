@@ -41,6 +41,12 @@ services:
     volumes:
       - ./app:/app/app
       - ./migrations:/app/migrations
+    command: >
+      sh -c "
+        flask db upgrade &&
+        python seed.py &&
+        flask run --host=0.0.0.0
+      "
 
 volumes:
   # to persist the database tables

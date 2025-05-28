@@ -6,7 +6,16 @@ def login_user(email, password):
         return user
     return None
 
-def register_user(name, email, password):
+def register_user(username, email, password_hash, full_name=None, phone=None, avatar_url=None):
     if get_user_by_email(email):
         return None  # Email đã tồn tại
-    return create_user(name, email, password)
+    return create_user(
+        username=username,
+        email=email,
+        password_hash=password_hash,
+        full_name=full_name,
+        phone=phone,
+        avatar_url=avatar_url,
+        user_type=3,
+        role_id=3
+    )

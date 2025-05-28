@@ -21,7 +21,7 @@ const LoginForm: React.FC<Props> = ({ onSuccess }) => {
     }
     try {
       const data = await loginUser(email, password);
-      if (data.id) {
+      if (data.user_id) {
         onSuccess(data);
       } else {
         setError(data.error || (data.errors && data.errors[0]) || "Đăng nhập thất bại");

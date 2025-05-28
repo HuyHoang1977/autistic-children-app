@@ -1,35 +1,41 @@
 import React, { useState } from "react";
 import { registerUser } from "../services/authService";
-import { validateRegister } from "../services/validation";
 
 interface Props {
-  onSuccess: () => void;
+  onSuccess: (user: any) => void;
 }
 
 const RegisterForm: React.FC<Props> = ({ onSuccess }) => {
-  const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [userType, setUserType] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setSuccess(null);
-    const errors = validateRegister({ name, email, password });
-    if (errors.length) {
-      setError(errors.join(" "));
+
+    // Validate đơn giản
+    if (!username || !email || !password || !avatarUrl|| !fullName || !phone) { 
+      setError("Vui lòng nhập đầy đủ username, email, password!");
       return;
     }
+
     try {
-      const data = await registerUser(name, email, password);
-      if (data.id) {
-        setSuccess("Đăng ký thành công! Bạn có thể đăng nhập.");
-        setName("");
-        setEmail("");
-        setPassword("");
-        onSuccess();
+      const data = await registerUser({
+        username,
+        email,
+        password,
+        full_name: fullName,
+        phone,
+        avatar_url: avatarUrl,
+      });
+      if (data.user_id) {
+        onSuccess(data);
       } else {
         setError(data.error || (data.errors && data.errors[0]) || "Đăng ký thất bại");
       }
@@ -43,10 +49,17 @@ const RegisterForm: React.FC<Props> = ({ onSuccess }) => {
       <h2>Đăng ký</h2>
       <input
         type="text"
-        placeholder="Tên"
-        value={name}
-        onChange={e => setName(e.target.value)}
+        placeholder="Tên đăng nhập"
+        value={username}
+        onChange={e => setUsername(e.target.value)}
         required
+        style={{ margin: "8px 0", padding: "8px", width: "100%" }}
+      />
+      <input
+        type="text"
+        placeholder="Họ tên"
+        value={fullName}
+        onChange={e => setFullName(e.target.value)}
         style={{ margin: "8px 0", padding: "8px", width: "100%" }}
       />
       <input
@@ -65,11 +78,24 @@ const RegisterForm: React.FC<Props> = ({ onSuccess }) => {
         required
         style={{ margin: "8px 0", padding: "8px", width: "100%" }}
       />
+      <input
+        type="text"
+        placeholder="Số điện thoại"
+        value={phone}
+        onChange={e => setPhone(e.target.value)}
+        style={{ margin: "8px 0", padding: "8px", width: "100%" }}
+      />
+      <input
+        type="text"
+        placeholder="Avatar URL"
+        value={avatarUrl}
+        onChange={e => setAvatarUrl(e.target.value)}
+        style={{ margin: "8px 0", padding: "8px", width: "100%" }}
+      />
       <button type="submit" style={{ padding: "8px 16px", marginTop: 8 }}>
         Đăng ký
       </button>
       {error && <p style={{ color: "red" }}>{error}</p>}
-      {success && <p style={{ color: "green" }}>{success}</p>}
     </form>
   );
 };
