@@ -4,16 +4,18 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="00aa798a-f17e-4959-9f28-7b978bdcc1b0" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/back-end/app/routers/user_router.py" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/app/routers/user_router.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/back-end/app/services/user_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/app/services/user_service.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/back-end/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/docker-compose.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/front-end/src/api/authApi.ts" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/src/api/authApi.ts" afterDir="false" />
-    </list>
+    <list default="true" id="00aa798a-f17e-4959-9f28-7b978bdcc1b0" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -33,14 +35,13 @@
   "keyToString": {
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
-    "git-widget-placeholder": "main",
     "last_opened_file_path": "/Users/nguyenlenhunghia/Desktop/in/autistic-children-app",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "ts.external.directory.path": "/Users/nguyenlenhunghia/Desktop/in/autistic-children-app/front-end/node_modules/typescript/lib",
+    "ts.external.directory.path": "/Applications/PyCharm.app/Contents/plugins/javascript-impl/jsLanguageServicesImpl/external",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -59,7 +60,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1748572143794</updated>
-      <workItem from="1748572145465" duration="5122000" />
+      <workItem from="1748572145465" duration="8805000" />
     </task>
     <servers />
   </component>
