@@ -121,7 +121,7 @@ def register():
     user = register_user(
         username=data.get('username'),
         email=data.get('email'),
-        password_hash=data.get('password'),
+        password=data.get('password'), 
         full_name=data.get('full_name'),
         phone=data.get('phone'),
         avatar_url=data.get('avatar_url')
