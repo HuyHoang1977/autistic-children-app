@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { loginUser } from "../services/authService";
-import { validateLogin } from "../services/validation";
+import { loginUser } from "../../services/authService";
+import { validateLogin } from "../../services/validation";
 
 interface Props {
   onSuccess: (user: any) => void;

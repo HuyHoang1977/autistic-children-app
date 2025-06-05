@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { registerUser } from "../services/authService";
+import { registerUser } from "../../services/authService";
 
 interface Props {
   onSuccess: (user: any) => void;
