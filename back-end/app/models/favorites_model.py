@@ -6,13 +6,14 @@ class Favorite(db.Model):
     __tablename__ = 'favorites'
 
     like_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    content_id = db.Column(db.Integer, nullable=False)  # ID của content được like (article, video, etc.)
+    content_id = db.Column(db.Integer, db.ForeignKey('contents.content_id'), nullable=False)  # Added ForeignKey
     user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     like_type = db.Column(db.Integer, nullable=False)  # 1: article, 2: video, 3: doctor, 4: tip, etc.
 
-    # Relationship với User
+    # Relationships
     user = db.relationship('User', backref=db.backref('favorites', lazy=True))
+    content = db.relationship('Content', backref=db.backref('favorites', lazy=True))
 
     # Unique constraint để tránh duplicate likes
     __table_args__ = (

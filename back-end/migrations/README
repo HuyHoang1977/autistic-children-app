@@ -1,1 +1,27 @@
 Single-database configuration for Flask.
+# Environment Setup
+
+## 1. Copy environment file
+
+cp .env.example .env
+
+
+## 2. Update .env with your values
+
+FLASK_ENV=development
+POSTGRES_USER=your_postgres_username
+POSTGRES_PASSWORD=your_postgres_password
+POSTGRES_DB=your_database_name
+SECRET_KEY=generate_a_strong_secret_key
+
+# For production with RDS
+RDS_USERNAME=your_rds_username
+RDS_PASSWORD=your_rds_password
+RDS_HOSTNAME=your_rds_endpoint
+RDS_PORT=5432
+RDS_DB_NAME=your_database_name
+
+
+## 3. Run the application
+
+docker compose up -d

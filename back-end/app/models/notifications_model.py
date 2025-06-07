@@ -12,7 +12,7 @@ class Notification(db.Model):
     notification_type = db.Column(db.Integer, nullable=False)  # 1: info, 2: warning, 3: success, 4: error
     is_read = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    metadata = db.Column(db.Text)  # JSON string để lưu thêm thông tin
+    notification_metadata = db.Column(db.Text)  # JSON string để lưu thêm thông tin
 
     # Relationship với User
     user = db.relationship('User', backref=db.backref('notifications', lazy=True))
@@ -26,5 +26,5 @@ class Notification(db.Model):
             'notification_type': self.notification_type,
             'is_read': self.is_read,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'metadata': self.metadata
+            'notification_metadata': self.notification_metadata
         }
