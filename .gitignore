@@ -2,4 +2,7 @@
 *.pyc
 __pycache__/
 
-.elasticbeanstalk
+.elasticbeanstalkautistic-children-app.iml
+inspectionProfiles
+.idea
+.idea
