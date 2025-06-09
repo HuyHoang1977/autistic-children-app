@@ -1,4 +1,4 @@
-# define the two containers
+# define the containers
 services:
   psql-db:
     # pull the postgres image from DockerHub
@@ -21,6 +21,24 @@ services:
       timeout: 20s
       retries: 5
 
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio-data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
   flask-backend:
     build: .
     container_name: flask-backend
@@ -30,6 +48,8 @@ services:
       psql-db:
         # waiting for the database to be ready
         condition: service_healthy
+      minio:
+        condition: service_healthy
     environment:
       RDS_USERNAME: ${POSTGRES_USER}
       RDS_PASSWORD: ${POSTGRES_PASSWORD}
@@ -38,6 +58,10 @@ services:
       RDS_DB_NAME: ${POSTGRES_DB}
       FLASK_ENV: development
       FLASK_APP: manage.py
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_SECURE: false
     volumes:
       - ./app:/app/app
       - ./migrations:/app/migrations
@@ -51,3 +75,5 @@ services:
 volumes:
   # to persist the database tables
   db-volume:
+  # to persist MinIO data
+  minio-data:
