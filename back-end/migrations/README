@@ -25,3 +25,17 @@ RDS_DB_NAME=your_database_name
 ## 3. Run the application
 
 docker compose up -d
+
+## Minio
+Tải Minio trên website . Nếu dùng Macos thì dùng lệnh : brew install minio
+docker compose down
+docker volume rm back-end_minio_data  # Xóa data cũ
+docker compose up
+
+#Test Image Upload
+
+curl -X POST -F "file=@path" http://localhost:8000/api/images/upload
+
+#List files để xem upload thành công
+
+curl http://localhost:8000/api/images/list

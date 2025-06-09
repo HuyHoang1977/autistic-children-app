@@ -19,7 +19,7 @@ class Content(db.Model):
     author = db.relationship('User', backref=db.backref('contents', lazy=True))
     articles = db.relationship('Article', back_populates='content', cascade='all, delete-orphan')
     comments = db.relationship('Comment', back_populates='content', cascade='all, delete-orphan')
-    # Removed problematic favorites relationship - it's defined in Favorite model
+    # Removed problematic favorites relationship - it's defined in Favorite models
 
     def to_dict(self):
         return {
