@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.services.user_service import UserService
 from app.validations.user_validation import validate_login_data, validate_register_data
+import secrets
 
 bp = Blueprint('auth_routes', __name__)
 user_service = UserService()
@@ -65,7 +66,17 @@ def login():
     user = user_service.login_user(data['email'], data['password'])
     if not user:
         return jsonify({"error": "Invalid email or password"}), 401
-    return jsonify(serialize_user(user)), 200
+
+    # Tạo token tạm thời
+    token = secrets.token_hex(32)
+
+    # Đáp ứng đúng định dạng frontend mong muốn: { data: { user, token } }
+    return jsonify({
+        "data": {
+            "user": serialize_user(user),
+            "token": token
+        }
+    }), 200
 
 @bp.route('/register', methods=['POST'])
 def register():
@@ -83,4 +94,11 @@ def register():
     )
     if not user:
         return jsonify({"error": "Email already exists"}), 409
-    return jsonify(serialize_user(user)), 201
+
+    token = secrets.token_hex(32)
+    return jsonify({
+        "data": {
+            "user": serialize_user(user),
+            "token": token
+        }
+    }), 201

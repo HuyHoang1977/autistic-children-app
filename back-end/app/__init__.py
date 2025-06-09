@@ -46,7 +46,7 @@ def create_app():
     with app.app_context():
         db.create_all()
 
-    from app.routers.user_router import bp as auth_bp
-    app.register_blueprint(auth_bp)
+    from app.routers.auth_router import bp as auth_bp
+    app.register_blueprint(auth_bp, url_prefix='/api/auth')
 
     return app
