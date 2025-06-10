@@ -1,10 +1,12 @@
 from flask import Blueprint, request, jsonify
-from app.services.user_service import UserService
-from app.validations.user_validation import validate_login_data, validate_register_data
+from app.services.auth_service import AuthService
+from app.validations.auth_validation import validate_login_data, validate_register_data
+from app.models.doctor_specializations_model import DoctorSpecialization
+from app.extensions import db
 import secrets
 
-bp = Blueprint('auth_routes', __name__)
-user_service = UserService()
+bp = Blueprint('auth', __name__)
+auth_service = AuthService()
 
 def serialize_user(user):
     return {
@@ -54,8 +56,19 @@ def serialize_user(user):
 
 @bp.route('/users', methods=['GET'])
 def get_users():
-    users = user_service.get_all_users()
-    return jsonify([serialize_user(u) for u in users]), 200
+    users = auth_service.get_all_users()
+    serialized_users = [serialize_user(user) for user in users]
+    return jsonify({"data": serialized_users}), 200
+
+@bp.route('/specializations', methods=['GET'])
+def get_specializations():
+    specializations = (
+        db.session.query(DoctorSpecialization.specialization)
+        .distinct()
+        .order_by(DoctorSpecialization.specialization)
+        .all()
+    )
+    return jsonify([s[0] for s in specializations]), 200
 
 @bp.route('/login', methods=['POST'])
 def login():
@@ -63,14 +76,11 @@ def login():
     errors = validate_login_data(data)
     if errors:
         return jsonify({"errors": errors}), 400
-    user = user_service.login_user(data['email'], data['password'])
+    user = auth_service.login_user(data['email'], data['password'])
     if not user:
         return jsonify({"error": "Invalid email or password"}), 401
 
-    # Tạo token tạm thời
     token = secrets.token_hex(32)
-
-    # Đáp ứng đúng định dạng frontend mong muốn: { data: { user, token } }
     return jsonify({
         "data": {
             "user": serialize_user(user),
@@ -84,13 +94,21 @@ def register():
     errors = validate_register_data(data)
     if errors:
         return jsonify({"errors": errors}), 400
-    user = user_service.register_user(
+    user = auth_service.register_user(
         username=data.get('username'),
         email=data.get('email'),
         password=data.get('password'),
-        full_name=data.get('full_name'),
+        full_name=f"{data.get('first_name', '')} {data.get('last_name', '')}".strip(),
         phone=data.get('phone'),
-        avatar_url=data.get('avatar_url')
+        avatar_url=data.get('avatar_url'),
+        role=data.get('role'),
+        address=data.get('address'),
+        emergency_contact=data.get('emergency_contact'),
+        specialty=data.get('specialty'),
+        qualifications=data.get('qualifications'),
+        license_number=data.get('license_number'),
+        clinic_name=data.get('clinic_name'),
+        clinic_address=data.get('clinic_address')
     )
     if not user:
         return jsonify({"error": "Email already exists"}), 409

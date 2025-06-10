@@ -29,17 +29,6 @@ const RegisterPage: React.FC = () => {
 
           <CardContent>
             <Tabs className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="parent" className="flex items-center gap-2">
-                  <Heart className="h-4 w-4" />
-                  Phụ huynh
-                </TabsTrigger>
-                <TabsTrigger value="doctor" className="flex items-center gap-2">
-                  <Stethoscope className="h-4 w-4" />
-                  Bác sĩ
-                </TabsTrigger>
-              </TabsList>
-
               <RegisterForm />
             </Tabs>
           </CardContent>

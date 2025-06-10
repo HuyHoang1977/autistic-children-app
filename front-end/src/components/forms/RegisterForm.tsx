@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
 import { Button } from "../ui/button"
@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
 import { Eye, EyeOff, User, Mail, Lock, Phone, Stethoscope, Heart, Loader2 } from "lucide-react"
 import { useAuth } from "../../hooks/auth/useAuth"
 import { RegisterRequest, UserRole } from "../../types"
+import { API_ENDPOINTS } from "../../api/endpoints"
 
 interface RegisterFormProps {
   defaultRole?: UserRole.PARENT | UserRole.DOCTOR
@@ -27,6 +28,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ defaultRole = UserRole.PARE
   const [activeTab, setActiveTab] = useState<UserRole>(defaultRole)
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
+  const [specializations, setSpecializations] = useState<string[]>([])
 
   const [formData, setFormData] = useState({
     username: "",
@@ -47,6 +49,13 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ defaultRole = UserRole.PARE
     clinic_name: "",
     clinic_address: "",
   })
+
+  useEffect(() => {
+    fetch(API_ENDPOINTS.AUTH.SPECIALIZATIONS)
+      .then(res => res.json())
+      .then(data => setSpecializations(data))
+      .catch(() => setSpecializations([]))
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -112,10 +121,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ defaultRole = UserRole.PARE
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold">Đăng ký tài khoản</CardTitle>
-        <CardDescription>Tham gia cộng đồng Healthcare Platform</CardDescription>
-      </CardHeader>
 
       <CardContent>
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as UserRole)} className="w-full">
@@ -296,18 +301,12 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ defaultRole = UserRole.PARE
                     <SelectTrigger>
                       <SelectValue placeholder="Chọn chuyên khoa" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pediatrics">Nhi khoa</SelectItem>
-                      <SelectItem value="internal-medicine">Nội khoa</SelectItem>
-                      <SelectItem value="surgery">Ngoại khoa</SelectItem>
-                      <SelectItem value="obstetrics-gynecology">Sản phụ khoa</SelectItem>
-                      <SelectItem value="dermatology">Da liễu</SelectItem>
-                      <SelectItem value="ophthalmology">Mắt</SelectItem>
-                      <SelectItem value="ent">Tai mũi họng</SelectItem>
-                      <SelectItem value="orthopedics">Chấn thương chỉnh hình</SelectItem>
-                      <SelectItem value="psychiatry">Tâm thần</SelectItem>
-                      <SelectItem value="other">Khác</SelectItem>
-                    </SelectContent>
+                      <SelectContent>
+                        {specializations.map((spec) => (
+                          <SelectItem key={spec} value={spec}>{spec}</SelectItem>
+                        ))}
+                        <SelectItem key="other" value="Khác">Khác</SelectItem>
+                      </SelectContent>
                   </Select>
                 </div>
 

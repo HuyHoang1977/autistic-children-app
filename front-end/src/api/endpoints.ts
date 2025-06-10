@@ -3,6 +3,7 @@ export const API_ENDPOINTS = {
   AUTH: {
     LOGIN: "/auth/login",
     REGISTER: "/auth/register",
+    SPECIALIZATIONS: "/auth/specializations",
     LOGOUT: "/auth/logout",
     // REFRESH: "/auth/refresh",
     // FORGOT_PASSWORD: "/auth/forgot-password",
