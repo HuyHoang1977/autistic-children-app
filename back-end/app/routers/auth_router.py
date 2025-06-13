@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
 from app.services.auth_service import AuthService
 from app.validations.auth_validation import validate_login_data, validate_register_data
 from app.models.doctor_specializations_model import DoctorSpecialization
@@ -73,50 +74,82 @@ def get_specializations():
 @bp.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid or missing JSON payload"}), 400
+
     errors = validate_login_data(data)
     if errors:
-        return jsonify({"errors": errors}), 400
-    user = auth_service.login_user(data['email'], data['password'])
-    if not user:
-        return jsonify({"error": "Invalid email or password"}), 401
+        return jsonify({"success": False, "errors": errors}), 400
 
-    token = secrets.token_hex(32)
-    return jsonify({
-        "data": {
-            "user": serialize_user(user),
-            "token": token
-        }
-    }), 200
+    try:
+        user, error = auth_service.login_user(data.get('email'), data.get('password'))
+        if error:
+            return jsonify({"success": False, "error": error}), 401
+
+        access_token = create_access_token(identity=user.user_id)
+        refresh_token = create_refresh_token(identity=user.user_id)
+        user_data = auth_service.get_user_with_role(user)
+
+        return jsonify({
+            "success": True,
+            "data": {
+                "user": user_data,
+                "token": access_token,
+                "refresh_token": refresh_token
+            }
+        }), 200
+    except Exception as e:
+        print("Login error:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
 
 @bp.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid or missing JSON payload"}), 400
+
     errors = validate_register_data(data)
     if errors:
-        return jsonify({"errors": errors}), 400
-    user = auth_service.register_user(
-        username=data.get('username'),
-        email=data.get('email'),
-        password=data.get('password'),
-        full_name=f"{data.get('first_name', '')} {data.get('last_name', '')}".strip(),
-        phone=data.get('phone'),
-        avatar_url=data.get('avatar_url'),
-        role=data.get('role'),
-        address=data.get('address'),
-        emergency_contact=data.get('emergency_contact'),
-        specialty=data.get('specialty'),
-        qualifications=data.get('qualifications'),
-        license_number=data.get('license_number'),
-        clinic_name=data.get('clinic_name'),
-        clinic_address=data.get('clinic_address')
-    )
-    if not user:
-        return jsonify({"error": "Email already exists"}), 409
+        return jsonify({"success": False, "errors": errors}), 400
 
-    token = secrets.token_hex(32)
+    try:
+        user, error = auth_service.register_user(data)
+        if error:
+            return jsonify({"success": False, "error": error}), 400
+    except Exception as e:
+        print("Register error:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+    access_token = create_access_token(identity=user.user_id)
+    refresh_token = create_refresh_token(identity=user.user_id)
+    user_data = auth_service.get_user_with_role(user)
+
     return jsonify({
+        "success": True,
         "data": {
-            "user": serialize_user(user),
-            "token": token
+            "user": user_data,
+            "token": access_token,
+            "refresh_token": refresh_token
         }
     }), 201
+    
+@bp.route('/refresh', methods=['POST'])
+@jwt_required(refresh=True)
+def refresh():
+    current_user_id = get_jwt_identity()
+    token, error = auth_service.refresh_token(current_user_id)
+    if error:
+        return jsonify({"success": False, "message": error}), 404
+
+    return jsonify({"success": True, "data": {"token": token}})
+
+# @bp.route('/forgot-password', methods=['POST'])
+# def forgot_password():
+#     data = request.get_json()
+#     email = data.get('email')
+#     if not email:
+#         return jsonify({"success": False, "message": "Email is required"}), 400
+
+#     message = auth_service.forgot_password(email)
+#     return jsonify({"success": True, "message": message})    

@@ -18,4 +18,21 @@ export const API_ENDPOINTS = {
     CHANGE_PASSWORD: "/users/change-password",
     SEARCH: "/users/search",
   },
+
+  // Article endpoints
+  ARTICLES: {
+    LIST: "/articles",
+    DETAIL: (article_id: number) => `/articles/${article_id}`,
+    CREATE: "/articles",
+    UPDATE: (article_id: number) => `/articles/${article_id}`,
+    DELETE: (article_id: number) => `/articles/${article_id}`,
+    TOGGLE_LIKE: (content_id: number) => `/articles/${content_id}/like`,
+    SAVE: (article_id: number) => `/articles/${article_id}/save`,
+    SHARE: (article_id: number) => `/articles/${article_id}/share`,
+    MY_ARTICLES: "/articles/my-articles",
+    SAVED_ARTICLES: "/articles/saved",
+    FOLLOWED_DOCTORS: "/articles/followed-doctors",
+    TRENDING: "/articles/trending",
+    FEATURED: "/articles/featured",
+  },
 } as const;

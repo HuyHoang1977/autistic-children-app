@@ -15,7 +15,7 @@ interface RoleBasedRendererProps {
   children?: React.ReactNode
 }
 
-export const RoleBasedRenderer = ({
+export const RoleBasedRenderer: React.FC<RoleBasedRendererProps> = ({
   adminVariant,
   doctorVariant,
   parentVariant,
@@ -23,34 +23,36 @@ export const RoleBasedRenderer = ({
   fallback = null,
   allowedRoles,
   children,
-}: RoleBasedRendererProps): React.ReactElement | null => {
+}) => {
   const { user } = useAuth()
 
+  const wrap = (node: React.ReactNode) =>
+    node === null || node === undefined ? null : <>{node}</>
+
   if (!user) {
-    return guestVariant ? <>{guestVariant}</> : children ? <>{children}</> : fallback ? <>{fallback}</> : null
+    return wrap(guestVariant || children || fallback)
   }
 
   if (allowedRoles && allowedRoles.length > 0) {
     if (!allowedRoles.includes(user.role)) {
-      return fallback ? <>{fallback}</> : null
+      return wrap(fallback)
     }
-    // If user has one of the allowed roles, continue to render based on specific role
   }
 
   if (children && (!allowedRoles || allowedRoles.includes(user.role))) {
-    return <>{children}</>
+    return wrap(children)
   }
 
   switch (user.role) {
     case UserRole.ADMIN:
-      return adminVariant ? <>{adminVariant}</> : children ? <>{children}</> : fallback ? <>{fallback}</> : null
+      return wrap(adminVariant || children || fallback)
     case UserRole.DOCTOR:
-      return doctorVariant ? <>{doctorVariant}</> : children ? <>{children}</> : fallback ? <>{fallback}</> : null
+      return wrap(doctorVariant || children || fallback)
     case UserRole.PARENT:
-      return parentVariant ? <>{parentVariant}</> : children ? <>{children}</> : fallback ? <>{fallback}</> : null
+      return wrap(parentVariant || children || fallback)
     case UserRole.GUEST:
-      return guestVariant ? <>{guestVariant}</> : children ? <>{children}</> : fallback ? <>{fallback}</> : null
+      return wrap(guestVariant || children || fallback)
     default:
-      return fallback ? <>{fallback}</> : null
+      return wrap(fallback)
   }
 }

@@ -41,6 +41,8 @@ services:
 
   flask-backend:
     build: .
+    env_file:
+      - .env
     container_name: flask-backend
     ports:
       - "8000:5000"

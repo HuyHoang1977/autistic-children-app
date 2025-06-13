@@ -35,16 +35,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ defaultRole = UserRole.PARE
     email: "",
     password: "",
     confirmPassword: "",
-    first_name: "",
-    last_name: "",
+    full_name: "",
     phone: "",
-    bio: "",
-    // Parent specific
-    address: "",
-    emergency_contact: "",
     // Doctor specific
     specialty: "",
-    qualifications: "",
     license_number: "",
     clinic_name: "",
     clinic_address: "",
@@ -62,7 +56,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ defaultRole = UserRole.PARE
     setError("")
 
     // Validate required fields
-    if (!formData.username || !formData.email || !formData.password || !formData.first_name || !formData.last_name) {
+    if (!formData.username || !formData.email || !formData.password || !formData.full_name) {
       setError("Vui lòng điền đầy đủ thông tin bắt buộc")
       return
     }
@@ -81,7 +75,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ defaultRole = UserRole.PARE
 
     // Validate doctor specific fields
     if (activeTab === UserRole.DOCTOR) {
-      if (!formData.specialty || !formData.qualifications || !formData.license_number) {
+      if (!formData.specialty || !formData.license_number) {
         setError("Vui lòng điền đầy đủ thông tin chuyên môn")
         return
       }
@@ -143,30 +137,18 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ defaultRole = UserRole.PARE
             )}
 
             {/* Common fields */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div className="space-y-2">
-                <Label htmlFor="first_name">Họ *</Label>
+            <div className="space-y-2 mb-4">
+              <Label htmlFor="phone">Họ và Tên</Label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
-                  id="first_name"
-                  name="first_name"
+                  id="full_name"
+                  name="full_name"
                   type="text"
-                  placeholder="Nguyễn"
-                  value={formData.first_name}
+                  placeholder="Phạm Văn A"
+                  value={formData.full_name}
                   onChange={handleChange}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="last_name">Tên *</Label>
-                <Input
-                  id="last_name"
-                  name="last_name"
-                  type="text"
-                  placeholder="Văn A"
-                  value={formData.last_name}
-                  onChange={handleChange}
-                  required
+                  className="pl-10"
                 />
               </div>
             </div>
@@ -266,33 +248,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ defaultRole = UserRole.PARE
               </div>
             </div>
 
-            {/* Role-specific fields */}
-            <TabsContent value={UserRole.PARENT} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="address">Địa chỉ</Label>
-                <Input
-                  id="address"
-                  name="address"
-                  type="text"
-                  placeholder="123 Đường ABC, Quận XYZ, TP.HCM"
-                  value={formData.address}
-                  onChange={handleChange}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="emergency_contact">Liên hệ khẩn cấp</Label>
-                <Input
-                  id="emergency_contact"
-                  name="emergency_contact"
-                  type="text"
-                  placeholder="Tên và số điện thoại người liên hệ khẩn cấp"
-                  value={formData.emergency_contact}
-                  onChange={handleChange}
-                />
-              </div>
-            </TabsContent>
-
             <TabsContent value={UserRole.DOCTOR} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -324,21 +279,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ defaultRole = UserRole.PARE
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="qualifications">Bằng cấp & Chứng chỉ *</Label>
-                <Textarea
-                  id="qualifications"
-                  name="qualifications"
-                  placeholder="Mô tả bằng cấp, chứng chỉ chuyên môn..."
-                  value={formData.qualifications}
-                  onChange={handleChange}
-                  rows={3}
-                  required={activeTab === UserRole.DOCTOR}
-                />
-              </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-2 mb-4">
                   <Label htmlFor="clinic_name">Tên phòng khám/Bệnh viện</Label>
                   <Input
                     id="clinic_name"
@@ -350,7 +292,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ defaultRole = UserRole.PARE
                   />
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 mb-4">
                   <Label htmlFor="clinic_address">Địa chỉ phòng khám</Label>
                   <Input
                     id="clinic_address"
@@ -364,17 +306,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ defaultRole = UserRole.PARE
               </div>
             </TabsContent>
 
-            <div className="space-y-2 mb-6">
-              <Label htmlFor="bio">Giới thiệu bản thân (tùy chọn)</Label>
-              <Textarea
-                id="bio"
-                name="bio"
-                placeholder="Viết vài dòng giới thiệu về bản thân..."
-                value={formData.bio}
-                onChange={handleChange}
-                rows={3}
-              />
-            </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? (

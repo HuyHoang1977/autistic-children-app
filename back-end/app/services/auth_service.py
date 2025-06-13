@@ -1,83 +1,79 @@
-from app.repositories.user_repository import UserRepository
-from app.models.users_model import User
-from app.models.parents_model import Parent
-from app.models.doctors_model import Doctor
+
+from app.repositories.auth_repository import AuthRepository
 from app.extensions import db
+from app.models import Parent, Doctor, User
+# from app.tasks.email import send_verification_email, send_password_reset_email
+
 
 class AuthService:
-    """Service cho các thao tác liên quan đến user."""
-
     def __init__(self):
-        self.user_repo = UserRepository()
+        self.auth_repo = AuthRepository()
 
     def login_user(self, email, password):
-        user = self.user_repo.get_user_by_email(email)
-        if user and user.check_password(password):
-            return user
-        return None
+        user = self.auth_repo.get_user_by(email=email)
+        if not user or not user.check_password(password):
+            return None, "Invalid email or password"
+        if not user.is_active:
+            return None, "Account is deactivated"
+        return user, None
 
-    def register_user(
-        self,
-        username,
-        email,
-        password,
-        full_name=None,
-        phone=None,
-        avatar_url=None,
-        role=None,
-        address=None,
-        emergency_contact=None,
-        specialty=None,
-        qualifications=None,
-        license_number=None,
-        clinic_name=None,
-        clinic_address=None
-    ):
-        if self.user_repo.get_user_by_email(email):
-            return None  # Email đã tồn tại
-
-        # Xác định role_id và user_type dựa trên role
-        if role == "DOCTOR":
-            user_type = 2
-            role_id = 2
-        else:  # Mặc định là PARENT
-            user_type = 3
-            role_id = 3
+    def register_user(self, data):
+        required_fields = ['username', 'email', 'password','full_name', 'phone', 'role']
+        for field in required_fields:
+            if not data.get(field):
+                return None, f"{field} is required"
+        
+        if self.auth_repo.get_user_by(email=data['email']):
+            return None, "Email already registered"
+        if self.auth_repo.get_user_by(username=data['username']):
+            return None, "Username already taken"
 
         user = User(
-            username=username,
-            email=email,
-            full_name=full_name,
-            phone=phone,
-            avatar_url=avatar_url,
-            user_type=user_type,
-            role_id=role_id
+            username=data['username'],
+            email=data['email'],
+            full_name=data.get('full_name'),
+            phone=data.get('phone')
         )
-        user.set_password(password)
+        user.set_password(data['password'])
         db.session.add(user)
-        db.session.flush()  # Để lấy user_id
+        db.session.flush()
 
+        role = data['role']
         if role == "PARENT":
             parent = Parent(
-                user_id=user.user_id,
-                address=address,
-                emergency_contact=emergency_contact
+                user_id=user.user_id
             )
             db.session.add(parent)
 
         if role == "DOCTOR":
             doctor = Doctor(
                 user_id=user.user_id,
-                specialty=specialty,
-                qualifications=qualifications,
-                license_number=license_number,
-                clinic_name=clinic_name,
-                clinic_address=clinic_address
+                specialty=data['specialty'],
+                license_number=data['license_number'],
+                clinic_name=data['clinic_name'],
+                clinic_address=data['clinic_address']
             )
             db.session.add(doctor)
 
         db.session.commit()
-        return user
-
+        # send_verification_email.delay(user.email, user.first_name)
+        return user, None
+    
+    # def forgot_password(self, email):
+    #     user = self.auth_repo.get_user_by(email=email.lower().strip())
+    #     if user:
+    #         send_password_reset_email.delay(user.email, user.first_name)
+    #     return "If the email exists, a reset link has been sent"
+    
+    def get_user_with_role(self, user):
+        user_data = user.to_dict()
+        if user.parent:
+            user_data.update(user.parent.to_dict())
+        elif user.doctor:
+            user_data.update(user.doctor.to_dict())
+        elif user.admin:
+            user_data.update(user.admin.to_dict())
+        return user_data
+    
     def get_all_users(self):
-        return self.user_repo.get_all()
+        return self.auth_repo.get_all()

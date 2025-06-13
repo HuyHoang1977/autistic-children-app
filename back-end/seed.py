@@ -18,9 +18,9 @@ def seed_data():
         # db.session.commit()
 
         # Seed roles
-        admin_role = Role(role_name='Admin', description='Administrator')
-        doctor_role = Role(role_name='Doctor', description='Medical Professional')
-        parent_role = Role(role_name='Parent', description='Parent User')
+        admin_role = Role(role_name='ADMIN', description='Administrator')
+        doctor_role = Role(role_name='DOCTOR', description='Medical Professional')
+        parent_role = Role(role_name='PARENT', description='Parent User')
         db.session.add_all([admin_role, doctor_role, parent_role])
         db.session.commit()
 
@@ -46,9 +46,9 @@ def seed_data():
             user_type=3,
             role_id=parent_role.role_id
         )
-        parent_user.set_password('123456')
-        admin_user.set_password('123456')
-        doctor_user.set_password('123456')
+        parent_user.set_password('12345678')
+        admin_user.set_password('12345678')
+        doctor_user.set_password('12345678')
         
         db.session.add_all([admin_user, doctor_user, parent_user])
         db.session.commit()

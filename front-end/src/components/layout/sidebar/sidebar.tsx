@@ -76,7 +76,6 @@ const Sidebar: React.FC = () => {
                 </div>              
             </>
             )}
-
           </div>
         </div>
       </SidebarHeader>

@@ -66,29 +66,20 @@ const Header: React.FC = () => {
           <nav className="hidden md:flex items-center space-x-6">
             <Link
               to="/articles"
-              className="text-sm font-medium transition-colors hover:text-primary flex items-center gap-2"
-            >
-              <BookOpen className="h-4 w-4" />
+              className="text-sm font-medium transition-colors hover:text-primary flex items-center gap-2">
               Bài viết
             </Link>
 
-            <RoleBasedRenderer
-              parentVariant={
-                <Link
-                  to="/doctors"
-                  className="text-sm font-medium transition-colors hover:text-primary flex items-center gap-2"
-                >
-                  <Users className="h-4 w-4" />
-                  Bác sĩ
-                </Link>
-              }
-            />
+            <Link
+              to="/doctors" className="text-sm font-medium transition-colors hover:text-primary flex items-center gap-2">
+              Bác sĩ
+            </Link>
 
-            <Link to="/about" className="text-sm font-medium transition-colors hover:text-primary">
+            <Link to="/about" className="text-sm font-medium transition-colors hover:text-primary flex items-center gap-2">
               Giới thiệu
             </Link>
 
-            <Link to="/contact" className="text-sm font-medium transition-colors hover:text-primary">
+            <Link to="/contact" className="text-sm font-medium transition-colors hover:text-primary flex items-center gap-2">
               Liên hệ
             </Link>
           </nav>

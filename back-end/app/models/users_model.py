@@ -1,4 +1,4 @@
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 from app.extensions import db
 
 class User(db.Model):
@@ -24,9 +24,22 @@ class User(db.Model):
     
 
     def set_password(self, password):
-        from werkzeug.security import generate_password_hash
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+    
+    def to_dict(self):
+        return {
+            'user_id': self.user_id,
+            'username': self.username,
+            'email': self.email,
+            'full_name': self.full_name,
+            'phone': self.phone,
+            'avatar_url': self.avatar_url,
+            'is_active': self.is_active,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'role': self.role
+        }
     

@@ -14,8 +14,7 @@ class RegisterData(BaseModel):
     username: str
     email: EmailStr
     password: str
-    first_name: str
-    last_name: str
+    full_name: str
     phone: Optional[str] = None
     bio: Optional[str] = None
     address: Optional[str] = None
@@ -37,13 +36,13 @@ def validate_login_data(data) -> List[str]:
 def validate_register_data(data) -> List[str]:
     errors = []
     # Kiểm tra các trường bắt buộc
-    required_fields = ['username', 'email', 'password', 'first_name', 'last_name', 'role']
+    required_fields = ['username', 'email', 'password', 'full_name', 'role']
     for field in required_fields:
         if not data.get(field):
             errors.append(f"{field} is required")
     # Nếu là doctor, kiểm tra các trường riêng
     if data.get('role') == 'DOCTOR':
-        for field in ['specialty', 'qualifications', 'license_number']:
+        for field in ['specialty', 'license_number', 'clinic_name', 'clinic_address']:
             if not data.get(field):
                 errors.append(f"{field} is required for doctor")
     return errors

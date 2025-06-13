@@ -120,13 +120,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
         <p className="text-xs text-gray-500 mb-2">Tài khoản demo:</p>
         <div className="space-y-1 text-xs">
           <p>
-            <strong>Bác sĩ:</strong> doctor@demo.com / demo123
+            <strong>Bác sĩ:</strong> doctor@example.com / 123456
           </p>
           <p>
-            <strong>Phụ huynh:</strong> parent@demo.com / demo123
+            <strong>Phụ huynh:</strong> parent@example.com / 123456
           </p>
           <p>
-            <strong>Admin:</strong> admin@demo.com / demo123
+            <strong>Admin:</strong> admin@example.com / 123456
           </p>
         </div>
       </div>

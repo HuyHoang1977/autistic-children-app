@@ -1,6 +1,7 @@
 import type React from "react"
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
 import { AuthProvider } from "../hooks/auth/useAuth"
+import AppLayout from "../components/layout/AppLayout"
 
 // // Public pages
 // import HomePage from "../pages/public/HomePage"
@@ -10,6 +11,7 @@ import { AuthProvider } from "../hooks/auth/useAuth"
 // Auth pages
 import LoginPage from "../pages/auth/LoginPage"
 import RegisterPage from "../pages/auth/RegisterPage"
+import HomePage from "../pages/public/HompPage" 
 // import ForgotPasswordPage from "../pages/auth/ForgotPasswordPage"
 
 
@@ -18,8 +20,11 @@ const AppRouter: React.FC = () => {
     <Router>
       <AuthProvider>
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+          <Route element={<AppLayout />}>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/" element={<HomePage />} />
+          </Route>
         </Routes>
       </AuthProvider>
     </Router>

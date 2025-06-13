@@ -13,7 +13,7 @@ const AppLayout: React.FC = () => {
 
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="min-h-screen flex flex-col bg-gray-50">
+      <div className="min-h-screen flex flex-col bg-gray-50 w-full">
         <Header />
 
         <div className="flex flex-1">
