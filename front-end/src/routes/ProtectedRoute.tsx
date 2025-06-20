@@ -3,11 +3,10 @@
 import type React from "react"
 import { Navigate, Outlet, useLocation } from "react-router-dom"
 import { useAuth } from "../hooks/auth/useAuth"
-import type { UserRole } from "../types"
 import { Loader2 } from "lucide-react"
 
 interface ProtectedRouteProps {
-  allowedRoles?: UserRole[]
+  allowedRoles?: number[]
   redirectPath?: string
 }
 
@@ -30,7 +29,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles = [], redi
     return <Navigate to={redirectPath} state={{ from: location }} replace />
   }
 
-  if (allowedRoles.length > 0 && user && !allowedRoles.includes(user.role)) {
+  if (
+    allowedRoles.length > 0 &&
+    user &&
+    (typeof user.role_id === "undefined" || !allowedRoles.includes(user.role_id))
+  ) {
     return <Navigate to="/unauthorized" replace />
   }
 

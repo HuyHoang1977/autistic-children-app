@@ -1,9 +1,16 @@
 "use client"
 
 import type React from "react"
-
 import { useAuth } from "../../../hooks/auth/useAuth"
-import { UserRole } from "../../../types"
+import {
+  isAdminUser,
+  isDoctorUser,
+  isParentUser,
+  isGuestUser,
+  ROLE_ADMIN,
+  ROLE_DOCTOR,
+  ROLE_PARENT,
+} from "../../../types/user.types"
 
 interface RoleBasedRendererProps {
   adminVariant?: React.ReactNode
@@ -11,7 +18,7 @@ interface RoleBasedRendererProps {
   parentVariant?: React.ReactNode
   guestVariant?: React.ReactNode
   fallback?: React.ReactNode
-  allowedRoles?: UserRole[]
+  allowedRoles?: number[]
   children?: React.ReactNode
 }
 
@@ -33,26 +40,29 @@ export const RoleBasedRenderer: React.FC<RoleBasedRendererProps> = ({
     return wrap(guestVariant || children || fallback)
   }
 
+  // allowedRoles: kiểm tra role_id
   if (allowedRoles && allowedRoles.length > 0) {
-    if (!allowedRoles.includes(user.role)) {
+    if (!user.role_id || !allowedRoles.includes(user.role_id)) {
       return wrap(fallback)
     }
   }
 
-  if (children && (!allowedRoles || allowedRoles.includes(user.role))) {
+  if (children && (!allowedRoles || (user.role_id && allowedRoles.includes(user.role_id)))) {
     return wrap(children)
   }
 
-  switch (user.role) {
-    case UserRole.ADMIN:
-      return wrap(adminVariant || children || fallback)
-    case UserRole.DOCTOR:
-      return wrap(doctorVariant || children || fallback)
-    case UserRole.PARENT:
-      return wrap(parentVariant || children || fallback)
-    case UserRole.GUEST:
-      return wrap(guestVariant || children || fallback)
-    default:
-      return wrap(fallback)
+  if (isAdminUser(user)) {
+    return wrap(adminVariant || children || fallback)
   }
+  if (isDoctorUser(user)) {
+    return wrap(doctorVariant || children || fallback)
+  }
+  if (isParentUser(user)) {
+    return wrap(parentVariant || children || fallback)
+  }
+  if (isGuestUser(user)) {
+    return wrap(guestVariant || children || fallback)
+  }
+
+  return wrap(fallback);
 }

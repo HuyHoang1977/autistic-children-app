@@ -12,3 +12,13 @@ class Admin(db.Model):
     
     user = db.relationship('User', back_populates='admin')
     role = db.relationship('Role', back_populates='admins')
+    
+    def to_dict(self):
+        return {
+            'admin_id': self.admin_id,
+            'user_id': self.user_id,
+            'admin_role': self.admin_role,
+            'permissions': self.permissions,
+            'last_login': self.last_login.isoformat() if self.last_login else None,
+            'role_id': self.role_id
+        }

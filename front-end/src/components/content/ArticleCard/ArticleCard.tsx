@@ -6,7 +6,7 @@ import { Badge } from "../../ui/badge"
 import { Heart, MessageSquare, Eye, Clock, CheckCircle2 } from "lucide-react"
 import { formatRelativeTime, formatNumber, truncateText } from "../../../utils/helper"
 import type { Article } from "../../../types"
-import { UserRole } from "../../../types"
+import { ROLE_DOCTOR } from "../../../types/user.types"
 
 interface ArticleCardProps {
   article: Article
@@ -61,8 +61,13 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, variant = "default" 
           <Avatar className={`${isCompact ? "h-6 w-6" : "h-8 w-8"} mr-2`}>
             <AvatarImage src={article.author.avatar_url || "/placeholder.svg?height=32&width=32"} />
             <AvatarFallback>
-              {article.author.first_name?.charAt(0)}
-              {article.author.last_name?.charAt(0)}
+              {article.author.full_name
+                ? article.author.full_name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .toUpperCase()
+                : "U"}
             </AvatarFallback>
           </Avatar>
           <div>
@@ -71,9 +76,9 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, variant = "default" 
                 to={`/profile/${article.author.user_id}`}
                 className={`font-medium hover:text-blue-600 transition-colors ${isCompact ? "text-xs" : "text-sm"}`}
               >
-                {article.author.first_name} {article.author.last_name}
+                {article.author.full_name}
               </Link>
-              {article.author.role === UserRole.DOCTOR && article.author.verified && (
+              {article.author.role_id === ROLE_DOCTOR && article.author.verified && (
                 <CheckCircle2 className={`text-blue-600 ml-1 ${isCompact ? "h-3 w-3" : "h-4 w-4"}`} />
               )}
             </div>

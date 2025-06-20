@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { useAuth } from "../auth/useAuth"
 import { articleService } from "../../api/services/article.sevice"
 import type { Article, ArticleFilters } from "../../types"
-import { UserRole } from "../../types"
+import { ROLE_PARENT, ROLE_DOCTOR } from "../../types/user.types"
 
 export const useArticles = (filters: ArticleFilters = {}) => {
   const { user } = useAuth()
@@ -58,7 +58,7 @@ export const useArticles = (filters: ArticleFilters = {}) => {
 
   const toggleLike = useCallback(
     async (content_id: number) => {
-      if (!user || user.role === UserRole.GUEST) return
+      if (!user || user.role_id === 0) return
 
       try {
         const result = await articleService.toggleLike(content_id)
@@ -93,7 +93,7 @@ export const useArticles = (filters: ArticleFilters = {}) => {
 
   const toggleSave = useCallback(
     async (article_id: number) => {
-      if (!user || user.role !== UserRole.PARENT) return
+      if (!user || user.role_id !== ROLE_PARENT) return
 
       try {
         const result = await articleService.toggleSave(article_id)
@@ -180,7 +180,7 @@ export const useDoctorArticles = () => {
 
   useEffect(() => {
     const fetchMyArticles = async () => {
-      if (!user || user.role !== UserRole.DOCTOR) return
+      if (!user || user.role_id !== ROLE_DOCTOR) return
 
       setIsLoading(true)
       setError(null)
@@ -231,7 +231,7 @@ export const useSavedArticles = () => {
 
   useEffect(() => {
     const fetchSavedArticles = async () => {
-      if (!user || user.role !== UserRole.PARENT) return
+      if (!user || user.role_id !== ROLE_PARENT) return
 
       setIsLoading(true)
       setError(null)

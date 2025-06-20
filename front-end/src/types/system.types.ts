@@ -1,5 +1,3 @@
-import type { UserRole } from "./user.types"
-
 // Notification từ bảng NOTIFICATIONS
 export interface Notification {
   notification_id: number
@@ -28,10 +26,9 @@ export interface Message {
   sender: {
     user_id: number
     username: string
-    first_name: string
-    last_name: string
+    full_name: string
     avatar_url?: string
-    role: UserRole
+    role_id?: number
   }
 }
 
@@ -50,11 +47,11 @@ export interface Appointment {
 
   doctor: {
     user_id: number
-    first_name: string
-    last_name: string
+    full_name: string
     specialty: string
     clinic_name?: string
     avatar_url?: string
+    role_id?: number
   }
 
   child?: {
@@ -86,10 +83,9 @@ export interface Conversation {
   participant: {
     user_id: number
     username: string
-    first_name: string
-    last_name: string
+    full_name: string
     avatar_url?: string
-    role: UserRole
+    role_id?: number
   }
   last_message: Message
   unread_count: number

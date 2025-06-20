@@ -13,15 +13,17 @@ import { Alert, AlertDescription } from "../ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
 import { Eye, EyeOff, User, Mail, Lock, Phone, Stethoscope, Heart, Loader2 } from "lucide-react"
 import { useAuth } from "../../hooks/auth/useAuth"
-import { RegisterRequest, UserRole } from "../../types"
+import { RegisterRequest, ROLE_PARENT, ROLE_DOCTOR } from "../../types"
 import { API_ENDPOINTS } from "../../api/endpoints"
 
+type UserRole = typeof ROLE_PARENT | typeof ROLE_DOCTOR
+
 interface RegisterFormProps {
-  defaultRole?: UserRole.PARENT | UserRole.DOCTOR
+  defaultRole?: UserRole
   onSuccess?: () => void
 }
 
-const RegisterForm: React.FC<RegisterFormProps> = ({ defaultRole = UserRole.PARENT, onSuccess }) => {
+const RegisterForm: React.FC<RegisterFormProps> = ({ defaultRole = ROLE_PARENT, onSuccess }) => {
   const navigate = useNavigate()
   const { register, isLoading } = useAuth()
 
@@ -37,6 +39,9 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ defaultRole = UserRole.PARE
     confirmPassword: "",
     full_name: "",
     phone: "",
+    // Parent specific (nếu cần mở rộng)
+    // address: "",
+    // emergency_contact: "",
     // Doctor specific
     specialty: "",
     license_number: "",
@@ -74,7 +79,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ defaultRole = UserRole.PARE
     }
 
     // Validate doctor specific fields
-    if (activeTab === UserRole.DOCTOR) {
+    if (activeTab === ROLE_DOCTOR) {
       if (!formData.specialty || !formData.license_number) {
         setError("Vui lòng điền đầy đủ thông tin chuyên môn")
         return
@@ -82,13 +87,25 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ defaultRole = UserRole.PARE
     }
 
     try {
-      const registerData: Omit<typeof formData, "confirmPassword"> & { confirmPassword?: string; role: UserRole } = {
-        ...formData,
-        role: activeTab,
+      const registerData: RegisterRequest = {
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        full_name: formData.full_name,
+        phone: formData.phone || undefined,
+        role_id: activeTab,
+        is_active: activeTab === ROLE_PARENT ? true : false,
+        // Parent specific (nếu có input)
+        // address: activeTab === ROLE_PARENT && formData.address ? formData.address : undefined,
+        // emergency_contact: activeTab === ROLE_PARENT && formData.emergency_contact ? formData.emergency_contact : undefined,
+        // Doctor specific
+        specialty: activeTab === ROLE_DOCTOR ? formData.specialty : undefined,
+        license_number: activeTab === ROLE_DOCTOR ? formData.license_number : undefined,
+        clinic_name: activeTab === ROLE_DOCTOR ? formData.clinic_name : undefined,
+        clinic_address: activeTab === ROLE_DOCTOR ? formData.clinic_address : undefined,
       }
-      delete registerData.confirmPassword
 
-      await register(registerData as RegisterRequest)
+      await register(registerData)
       if (onSuccess) {
         onSuccess()
       } else {
@@ -99,7 +116,9 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ defaultRole = UserRole.PARE
     }
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     setFormData((prev) => ({
       ...prev,
       [e.target.name]: e.target.value,
@@ -115,15 +134,14 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ defaultRole = UserRole.PARE
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
-
       <CardContent>
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as UserRole)} className="w-full">
+        <Tabs value={String(activeTab)} onValueChange={v => setActiveTab(Number(v) as UserRole)} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value={UserRole.PARENT} className="flex items-center gap-2">
+            <TabsTrigger value={String(ROLE_PARENT)} className="flex items-center gap-2">
               <Heart className="h-4 w-4" />
               Phụ huynh
             </TabsTrigger>
-            <TabsTrigger value={UserRole.DOCTOR} className="flex items-center gap-2">
+            <TabsTrigger value={String(ROLE_DOCTOR)} className="flex items-center gap-2">
               <Stethoscope className="h-4 w-4" />
               Bác sĩ
             </TabsTrigger>
@@ -247,8 +265,9 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ defaultRole = UserRole.PARE
                 />
               </div>
             </div>
-
-            <TabsContent value={UserRole.DOCTOR} className="space-y-4">
+            {/* Parent specific fields */}
+            {/* Doctor specific fields */}
+            <TabsContent value={String(ROLE_DOCTOR)} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="specialty">Chuyên khoa *</Label>
@@ -274,7 +293,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ defaultRole = UserRole.PARE
                     placeholder="VD: 12345/BYT"
                     value={formData.license_number}
                     onChange={handleChange}
-                    required={activeTab === UserRole.DOCTOR}
+                    required={activeTab === ROLE_DOCTOR}
                   />
                 </div>
               </div>

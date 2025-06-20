@@ -1,5 +1,3 @@
-import type { UserRole } from "./user.types"
-
 // Base Content từ bảng CONTENTS
 export interface BaseContent {
   content_id: number
@@ -27,10 +25,9 @@ export interface Article extends BaseContent {
   author: {
     user_id: number
     username: string
-    first_name: string
-    last_name: string
+    full_name: string
     avatar_url?: string
-    role: UserRole
+    role_id: number
     specialty?: string
     verified?: boolean
   }
@@ -69,10 +66,9 @@ export interface Comment {
   author: {
     user_id: number
     username: string
-    first_name: string
-    last_name: string
+    full_name: string
     avatar_url?: string
-    role: UserRole
+    role_id: number
     specialty?: string
   }
 

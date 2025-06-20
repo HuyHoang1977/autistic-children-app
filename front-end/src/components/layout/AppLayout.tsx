@@ -17,7 +17,7 @@ const AppLayout: React.FC = () => {
         <Header />
 
         <div className="flex flex-1">
-          {isAuthenticated && <Sidebar />}
+          {/* {isAuthenticated && <Sidebar />} */}
 
           <SidebarInset className="flex-1">
             <div className="min-h-[calc(100vh-4rem)]">

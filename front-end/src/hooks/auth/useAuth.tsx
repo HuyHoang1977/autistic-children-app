@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect, useContext, createContext, type ReactNode, useCallback } from "react"
-import { type User, UserRole, type LoginRequest, type RegisterRequest } from "../../types"
+import { type User, type LoginRequest, type RegisterRequest, ROLE_ADMIN, ROLE_PARENT, ROLE_DOCTOR } from "../../types/user.types"
 import { authService } from "../../api/services/auth.service"
 
 interface AuthContextType {
@@ -12,7 +12,7 @@ interface AuthContextType {
   login: (credentials: LoginRequest) => Promise<void>
   register: (userData: RegisterRequest) => Promise<void>
   logout: () => Promise<void>
-  hasRole: (roles: UserRole | UserRole[]) => boolean
+  hasRole: (roles: number | number[]) => boolean
   updateUser: (userData: Partial<User>) => void
 }
 
@@ -80,14 +80,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [])
 
   const hasRole = useCallback(
-    (roles: UserRole | UserRole[]): boolean => {
-      if (!user || user.role === UserRole.GUEST) return false
+    (roles: number | number[]): boolean => {
+      if (!user || user.role_id === 0) return false
 
       if (Array.isArray(roles)) {
-        return roles.includes(user.role)
+        return roles.includes(user.role_id!)
       }
 
-      return user.role === roles
+      return user.role_id === roles
     },
     [user],
   )
@@ -97,14 +97,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (user) {
         setUser(prevUser => {
           if (!prevUser) return prevUser
-          // Ensure type safety by updating only fields relevant to the user's role
-          if (prevUser.role === UserRole.PARENT) {
-            return { ...prevUser, ...userData } as User
+          // Ensure the role_id stays the same and only allowed fields are updated
+          if (prevUser.role_id === ROLE_PARENT) {
+            return { ...prevUser, ...userData, role_id: ROLE_PARENT }
           }
-          if (prevUser.role === UserRole.DOCTOR) {
-            return { ...prevUser, ...userData } as User
+          if (prevUser.role_id === ROLE_DOCTOR) {
+            return { ...prevUser, ...userData, role_id: ROLE_DOCTOR }
           }
-          // Add more role checks if needed
+          if (prevUser.role_id === ROLE_ADMIN) {
+            return { ...prevUser, ...userData, role_id: ROLE_ADMIN }
+          }
           return prevUser
         })
       }
@@ -115,7 +117,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const contextValue: AuthContextType = {
     user,
     isLoading,
-    isAuthenticated: !!user && user.role !== UserRole.GUEST,
+    isAuthenticated: !!user && user.role_id !== 0,
     login,
     register,
     logout,

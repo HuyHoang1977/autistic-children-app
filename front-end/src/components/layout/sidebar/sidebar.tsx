@@ -1,285 +1,237 @@
 "use client"
 
 import type React from "react"
-import { Link, useLocation } from "react-router-dom"
-import { useAuth } from "../../../hooks/auth/useAuth"
-import { isGuestUser, UserRole } from "../../../types"
-import {
-  Sidebar as ShadcnSidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarFooter,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarGroupContent,
-  SidebarSeparator,
-} from "../../ui/sidebar"
+import { Link, useNavigate } from "react-router-dom"
+import { Button } from "../../ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar"
-import { Badge } from "../../ui/badge"
 import {
-  Home,
-  BookOpen,
-  Users,
-  Heart,
-  Settings,
-  FileText,
-  BarChart3,
-  Bell,
-  User,
-  Database,
-  Flag,
-  PlusCircle,
-  Stethoscope,
-  Baby,
-} from "lucide-react"
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../../ui/dropdown-menu"
+import { Badge } from "../../ui/badge"
+import { Bell, Search, Menu, User, Settings, LogOut, Heart, BookOpen, Users, Sun, Moon } from "lucide-react"
+import { useAuth } from "../../../hooks/auth/useAuth"
+import {
+  isDoctorUser,
+  isParentUser,
+  isAdminUser,
+  isGuestUser,
+  ROLE_ADMIN,
+  ROLE_PARENT,
+  ROLE_DOCTOR,
+} from "../../../types/user.types"
+import { RoleBasedRenderer } from "../../common/RoleBasedRenderer/RoleBasedRenderer"
+import { useTheme } from "../../theme-provider"
+import { SidebarTrigger } from "../../ui/sidebar"
 
-const Sidebar: React.FC = () => {
-  const { user } = useAuth()
-  const location = useLocation()
+const Header: React.FC = () => {
+  const { user, logout, isAuthenticated } = useAuth()
+  const { theme, setTheme } = useTheme()
+  const navigate = useNavigate()
 
-  if (!user) return null
+  const handleLogout = async () => {
+    await logout()
+    navigate("/")
+  }
 
-  const isActive = (path: string) => {
-    return location.pathname === path || location.pathname.startsWith(`${path}/`)
+  const getDashboardLink = () => {
+    if (!user) return "/"
+
+    switch (user.role_id) {
+      case ROLE_ADMIN:
+        return "/admin"
+      case ROLE_DOCTOR:
+        return "/doctor"
+      case ROLE_PARENT:
+        return "/parent"
+      default:
+        return "/"
+    }
   }
 
   return (
-    <ShadcnSidebar collapsible="icon">
-      <SidebarHeader>
-        <div className="flex items-center gap-2 px-2 py-3">
-          <Avatar className="h-10 w-10">
-            <AvatarImage src={user && !isGuestUser(user) ? user.avatar_url : "/placeholder.svg?height=40&width=40"} />
-            <AvatarFallback>
-              {user && !isGuestUser(user) ? `${user.first_name?.charAt(0)}${user.last_name?.charAt(0)}` : "G"}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex flex-col">
-            {user && !isGuestUser(user) && (
-            <>
-                <span className="font-medium truncate">
-                {user.first_name} {user.last_name}
-                </span>
-                <div className="flex items-center gap-1">
-                <Badge variant="outline" className="text-xs">
-                    {user.role === UserRole.DOCTOR && "Bác sĩ"}
-                    {user.role === UserRole.PARENT && "Phụ huynh"}
-                    {user.role === UserRole.ADMIN && "Quản trị viên"}
-                </Badge>
-                {user.role === UserRole.DOCTOR && (user as any).verified && (
-                    <Badge variant="default" className="text-xs">
-                    ✓
-                    </Badge>
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container mx-auto px-4">
+        <div className="flex h-16 items-center justify-between">
+          {/* Logo and Sidebar Trigger */}
+          <div className="flex items-center gap-2">
+            {isAuthenticated && <SidebarTrigger />}
+
+            <Link to="/" className="flex items-center space-x-2">
+              <div className="flex items-center justify-center w-8 h-8 bg-blue-600 rounded-lg">
+                <Heart className="h-5 w-5 text-white" />
+              </div>
+              <span className="font-bold text-xl">Healthcare</span>
+            </Link>
+          </div>
+
+          {/* Navigation */}
+          <nav className="hidden md:flex items-center space-x-6">
+            <Link
+              to="/articles"
+              className="text-sm font-medium transition-colors hover:text-primary flex items-center gap-2">
+              Bài viết
+            </Link>
+
+            <Link
+              to="/doctors" className="text-sm font-medium transition-colors hover:text-primary flex items-center gap-2">
+              Bác sĩ
+            </Link>
+
+            <Link to="/about" className="text-sm font-medium transition-colors hover:text-primary flex items-center gap-2">
+              Giới thiệu
+            </Link>
+
+            <Link to="/contact" className="text-sm font-medium transition-colors hover:text-primary flex items-center gap-2">
+              Liên hệ
+            </Link>
+          </nav>
+
+          {/* Right side */}
+          <div className="flex items-center space-x-4">
+            {/* Search */}
+            <Button variant="ghost" size="sm" className="hidden md:flex">
+              <Search className="h-4 w-4" />
+            </Button>
+
+            {/* Theme toggle */}
+            <Button variant="ghost" size="sm" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+
+            {isAuthenticated ? (
+              <>
+                {/* Notifications */}
+                {user && (isParentUser(user) || isDoctorUser(user) || isAdminUser(user)) && (
+                  <Link to="/notifications">
+                    <Button variant="ghost" size="sm" className="relative">
+                      <Bell className="h-4 w-4" />
+                      <Badge
+                        variant="destructive"
+                        className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center text-xs"
+                      >
+                        3
+                      </Badge>
+                    </Button>
+                  </Link>
                 )}
-                </div>              
-            </>
+
+                {/* User menu */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage
+                          src={user && !isGuestUser(user) ? user.avatar_url ?? "/placeholder.svg?height=32&width=32" : "/placeholder.svg?height=32&width=32"}
+                        />
+                        <AvatarFallback>
+                          {user && !isGuestUser(user)
+                            ? user.full_name
+                              ? user.full_name
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")
+                                  .toUpperCase()
+                              : "U"
+                            : "G"}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        {user && !isGuestUser(user) && (
+                          <>
+                            <p className="text-sm font-medium leading-none">
+                              {user.full_name}
+                            </p>
+                            <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge variant="outline" className="text-xs">
+                                {user.role_id === ROLE_DOCTOR && "Bác sĩ"}
+                                {user.role_id === ROLE_PARENT && "Phụ huynh"}
+                                {user.role_id === ROLE_ADMIN && "Quản trị viên"}
+                              </Badge>
+                              {isDoctorUser(user) && user.doctor_info?.verified && (
+                                <Badge variant="default" className="text-xs">
+                                  ✓ Đã xác minh
+                                </Badge>
+                              )}
+                            </div>
+                          </>
+                        )}
+                        {(!user || isGuestUser(user)) && <p className="text-sm font-medium leading-none">Khách</p>}
+                      </div>
+                    </DropdownMenuLabel>
+
+                    <DropdownMenuSeparator />
+
+                    <DropdownMenuItem asChild>
+                      <Link to={getDashboardLink()} className="flex items-center">
+                        <User className="mr-2 h-4 w-4" />
+                        Dashboard
+                      </Link>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem asChild>
+                      <Link to="/profile" className="flex items-center">
+                        <Settings className="mr-2 h-4 w-4" />
+                        Hồ sơ cá nhân
+                      </Link>
+                    </DropdownMenuItem>
+
+                    {user && isDoctorUser(user) && (
+                      <DropdownMenuItem asChild>
+                        <Link to="/doctor/articles" className="flex items-center">
+                          <BookOpen className="mr-2 h-4 w-4" />
+                          Bài viết của tôi
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    {user && isParentUser(user) && (
+                      <DropdownMenuItem asChild>
+                        <Link to="/parent/saved-articles" className="flex items-center">
+                          <Heart className="mr-2 h-4 w-4" />
+                          Bài viết đã lưu
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+
+                    <DropdownMenuSeparator />
+
+                    <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Đăng xuất
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <Button variant="ghost" asChild>
+                  <Link to="/login">Đăng nhập</Link>
+                </Button>
+                <Button asChild>
+                  <Link to="/register">Đăng ký</Link>
+                </Button>
+              </div>
             )}
+
+            {/* Mobile menu */}
+            <Button variant="ghost" size="sm" className="md:hidden">
+              <Menu className="h-4 w-4" />
+            </Button>
           </div>
         </div>
-      </SidebarHeader>
-
-      <SidebarSeparator />
-
-      <SidebarContent>
-        {/* Common menu items */}
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/")}>
-                  <Link to="/">
-                    <Home />
-                    <span>Trang chủ</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/articles")}>
-                  <Link to="/articles">
-                    <BookOpen />
-                    <span>Bài viết</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarSeparator />
-
-        {/* Role-specific menu items */}
-        {user.role === UserRole.PARENT && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Phụ huynh</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/parent")}>
-                    <Link to="/parent">
-                      <BarChart3 />
-                      <span>Dashboard</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/parent/saved-articles")}>
-                    <Link to="/parent/saved-articles">
-                      <Heart />
-                      <span>Bài viết đã lưu</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/parent/followed-doctors")}>
-                    <Link to="/parent/followed-doctors">
-                      <Stethoscope />
-                      <span>Bác sĩ đang theo dõi</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/parent/children")}>
-                    <Link to="/parent/children">
-                      <Baby />
-                      <span>Quản lý con em</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        {user.role === UserRole.DOCTOR && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Bác sĩ</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/doctor")}>
-                    <Link to="/doctor">
-                      <BarChart3 />
-                      <span>Dashboard</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/doctor/articles")}>
-                    <Link to="/doctor/articles">
-                      <FileText />
-                      <span>Bài viết của tôi</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/doctor/articles/create")}>
-                    <Link to="/doctor/articles/create">
-                      <PlusCircle />
-                      <span>Viết bài mới</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/doctor/followers")}>
-                    <Link to="/doctor/followers">
-                      <Users />
-                      <span>Người theo dõi</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        {user.role === UserRole.ADMIN && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Quản trị viên</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/admin")}>
-                    <Link to="/admin">
-                      <BarChart3 />
-                      <span>Dashboard</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/admin/users")}>
-                    <Link to="/admin/users">
-                      <Users />
-                      <span>Quản lý người dùng</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/admin/content-moderation")}>
-                    <Link to="/admin/content-moderation">
-                      <Flag />
-                      <span>Kiểm duyệt nội dung</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/admin/categories")}>
-                    <Link to="/admin/categories">
-                      <Database />
-                      <span>Danh mục & Thẻ</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        <SidebarSeparator />
-
-        {/* Common settings */}
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/profile")}>
-                  <Link to="/profile">
-                    <User />
-                    <span>Hồ sơ cá nhân</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/notifications")}>
-                  <Link to="/notifications">
-                    <Bell />
-                    <span>Thông báo</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/settings")}>
-                  <Link to="/settings">
-                    <Settings />
-                    <span>Cài đặt</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-
-      <SidebarFooter>
-        <div className="px-3 py-2">
-          <Badge variant="outline" className="w-full justify-center">
-            v1.0.0
-          </Badge>
-        </div>
-      </SidebarFooter>
-    </ShadcnSidebar>
+      </div>
+    </header>
   )
 }
 
-export default Sidebar
+export default Header

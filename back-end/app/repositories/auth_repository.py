@@ -8,7 +8,7 @@ class AuthRepository(BaseRepository):
     def get_user_by(self, **kwargs):
         return self.model.query.filter_by(**kwargs).first()
 
-    def create_user(self, username, email, password_hash, full_name=None, phone=None, avatar_url=None, user_type=None, role_id=None):
+    def create_user(self, username, email, password_hash, full_name=None, phone=None, avatar_url=None, user_type=None, role_id=None, is_active=None):
         # Sử dụng hàm create của BaseRepository để tạo user
         return self.create(
             username=username,
@@ -18,5 +18,6 @@ class AuthRepository(BaseRepository):
             phone=phone,
             avatar_url=avatar_url,
             user_type=user_type,
-            role_id=role_id
+            role_id=role_id,
+            is_active=is_active
         )

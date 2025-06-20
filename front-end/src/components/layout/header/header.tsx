@@ -15,9 +15,16 @@ import {
 import { Badge } from "../../ui/badge"
 import { Bell, Search, Menu, User, Settings, LogOut, Heart, BookOpen, Users, Sun, Moon } from "lucide-react"
 import { useAuth } from "../../../hooks/auth/useAuth"
-import { isDoctorUser, isGuestUser, UserRole } from "../../../types"
+import {
+  isDoctorUser,
+  isParentUser,
+  isAdminUser,
+  isGuestUser,
+  ROLE_ADMIN,
+  ROLE_PARENT,
+  ROLE_DOCTOR,
+} from "../../../types/user.types"
 import { RoleBasedRenderer } from "../../common/RoleBasedRenderer/RoleBasedRenderer"
-// import { useTheme } from "../../theme-provider"
 import { useTheme } from "../../theme-provider"
 import { SidebarTrigger } from "../../ui/sidebar"
 
@@ -34,12 +41,12 @@ const Header: React.FC = () => {
   const getDashboardLink = () => {
     if (!user) return "/"
 
-    switch (user.role) {
-      case UserRole.ADMIN:
+    switch (user.role_id) {
+      case ROLE_ADMIN:
         return "/admin"
-      case UserRole.DOCTOR:
+      case ROLE_DOCTOR:
         return "/doctor"
-      case UserRole.PARENT:
+      case ROLE_PARENT:
         return "/parent"
       default:
         return "/"
@@ -99,7 +106,7 @@ const Header: React.FC = () => {
             {isAuthenticated ? (
               <>
                 {/* Notifications */}
-                <RoleBasedRenderer allowedRoles={[UserRole.PARENT, UserRole.DOCTOR, UserRole.ADMIN]} fallback={null}>
+                {user && (isParentUser(user) || isDoctorUser(user) || isAdminUser(user)) && (
                   <Link to="/notifications">
                     <Button variant="ghost" size="sm" className="relative">
                       <Bell className="h-4 w-4" />
@@ -111,7 +118,7 @@ const Header: React.FC = () => {
                       </Badge>
                     </Button>
                   </Link>
-                </RoleBasedRenderer>
+                )}
 
                 {/* User menu */}
                 <DropdownMenu>
@@ -119,10 +126,18 @@ const Header: React.FC = () => {
                     <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                       <Avatar className="h-8 w-8">
                         <AvatarImage
-                          src={user && !isGuestUser(user) ? user.avatar_url : "/placeholder.svg?height=32&width=32"}
+                          src={user && !isGuestUser(user) ? user.avatar_url ?? "/placeholder.svg?height=32&width=32" : "/placeholder.svg?height=32&width=32"}
                         />
                         <AvatarFallback>
-                          {user && !isGuestUser(user) ? `${user.first_name?.charAt(0)}${user.last_name?.charAt(0)}` : "G"}
+                          {user && !isGuestUser(user)
+                            ? user.full_name
+                              ? user.full_name
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")
+                                  .toUpperCase()
+                              : "U"
+                            : "G"}
                         </AvatarFallback>
                       </Avatar>
                     </Button>
@@ -134,16 +149,16 @@ const Header: React.FC = () => {
                         {user && !isGuestUser(user) && (
                           <>
                             <p className="text-sm font-medium leading-none">
-                              {user.first_name} {user.last_name}
+                              {user.full_name}
                             </p>
                             <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
                             <div className="flex items-center gap-2 mt-1">
                               <Badge variant="outline" className="text-xs">
-                                {user.role === UserRole.DOCTOR && "Bác sĩ"}
-                                {user.role === UserRole.PARENT && "Phụ huynh"}
-                                {user.role === UserRole.ADMIN && "Quản trị viên"}
+                                {user.role_id === ROLE_DOCTOR && "Bác sĩ"}
+                                {user.role_id === ROLE_PARENT && "Phụ huynh"}
+                                {user.role_id === ROLE_ADMIN && "Quản trị viên"}
                               </Badge>
-                              {user.role === UserRole.DOCTOR && isDoctorUser(user) && user.verified && (
+                              {isDoctorUser(user) && user.doctor_info?.verified && (
                                 <Badge variant="default" className="text-xs">
                                   ✓ Đã xác minh
                                 </Badge>
@@ -171,24 +186,22 @@ const Header: React.FC = () => {
                       </Link>
                     </DropdownMenuItem>
 
-                    <RoleBasedRenderer
-                      doctorVariant={
-                        <DropdownMenuItem asChild>
-                          <Link to="/doctor/articles" className="flex items-center">
-                            <BookOpen className="mr-2 h-4 w-4" />
-                            Bài viết của tôi
-                          </Link>
-                        </DropdownMenuItem>
-                      }
-                      parentVariant={
-                        <DropdownMenuItem asChild>
-                          <Link to="/parent/saved-articles" className="flex items-center">
-                            <Heart className="mr-2 h-4 w-4" />
-                            Bài viết đã lưu
-                          </Link>
-                        </DropdownMenuItem>
-                      }
-                    />
+                    {user && isDoctorUser(user) && (
+                      <DropdownMenuItem asChild>
+                        <Link to="/doctor/articles" className="flex items-center">
+                          <BookOpen className="mr-2 h-4 w-4" />
+                          Bài viết của tôi
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    {user && isParentUser(user) && (
+                      <DropdownMenuItem asChild>
+                        <Link to="/parent/saved-articles" className="flex items-center">
+                          <Heart className="mr-2 h-4 w-4" />
+                          Bài viết đã lưu
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
 
                     <DropdownMenuSeparator />
 

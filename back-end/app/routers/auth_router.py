@@ -74,6 +74,7 @@ def get_specializations():
 @bp.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
+    print("login")
     if not data:
         return jsonify({"error": "Invalid or missing JSON payload"}), 400
 
@@ -106,16 +107,20 @@ def login():
 @bp.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
+    
+    print("Register request data:")
     if not data:
         return jsonify({"error": "Invalid or missing JSON payload"}), 400
-
+    print("Register data:", data)
     errors = validate_register_data(data)
     if errors:
+        print("Validation errors:", errors) 
         return jsonify({"success": False, "errors": errors}), 400
 
     try:
         user, error = auth_service.register_user(data)
         if error:
+            print("Register error:", error)
             return jsonify({"success": False, "error": error}), 400
     except Exception as e:
         print("Register error:", e)
