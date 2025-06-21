@@ -1,346 +1,307 @@
 "use client"
 
 import type React from "react"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
-import { Textarea } from "../ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { Alert, AlertDescription } from "../ui/alert"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
-import { Eye, EyeOff, User, Mail, Lock, Phone, Stethoscope, Heart, Loader2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { useAuth } from "../../hooks/auth/useAuth"
-import { RegisterRequest, ROLE_PARENT, ROLE_DOCTOR } from "../../types"
+import { RegisterRequest, ROLE_ADMIN, ROLE_DOCTOR, ROLE_PARENT } from "../../types"
 import { API_ENDPOINTS } from "../../api/endpoints"
 
-type UserRole = typeof ROLE_PARENT | typeof ROLE_DOCTOR
-
-interface RegisterFormProps {
-  defaultRole?: UserRole
-  onSuccess?: () => void
-}
-
-const RegisterForm: React.FC<RegisterFormProps> = ({ defaultRole = ROLE_PARENT, onSuccess }) => {
-  const navigate = useNavigate()
-  const { register, isLoading } = useAuth()
-
-  const [activeTab, setActiveTab] = useState<UserRole>(defaultRole)
-  const [showPassword, setShowPassword] = useState(false)
-  const [error, setError] = useState("")
-  const [specializations, setSpecializations] = useState<string[]>([])
-
-  const [formData, setFormData] = useState({
+const RegisterForm: React.FC = () => {
+  const { register } = useAuth();
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState<RegisterRequest>({
     username: "",
     email: "",
     password: "",
-    confirmPassword: "",
     full_name: "",
-    phone: "",
-    // Parent specific (nếu cần mở rộng)
-    // address: "",
-    // emergency_contact: "",
-    // Doctor specific
+    role_id: ROLE_PARENT,
+    number_of_children: 0,
+    children_info: "",
+    parenting_concerns: "",
     specialty: "",
     license_number: "",
     clinic_name: "",
     clinic_address: "",
-  })
+    years_experience: 0,
+    bio: "",
+  });
+  const [errors, setErrors] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    fetch(API_ENDPOINTS.AUTH.SPECIALIZATIONS)
-      .then(res => res.json())
-      .then(data => setSpecializations(data))
-      .catch(() => setSpecializations([]))
-  }, [])
+  const validateForm = (): string[] => {
+    const errors: string[] = [];
+    if (!/^[a-zA-Z0-9_-]+$/.test(formData.username)) {
+      errors.push("Tên người dùng chỉ được chứa chữ cái, số, dấu gạch dưới (_) hoặc gạch ngang (-).");
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.push("Email không hợp lệ.");
+    }
+    if (formData.password.length < 8) {
+      errors.push("Mật khẩu phải có ít nhất 8 ký tự.");
+    }
+    if (formData.role_id === ROLE_PARENT && (formData.number_of_children ?? 0) < 0) {
+      errors.push("Số con không được âm.");
+    }
+    return errors;
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === "number_of_children" || name === "years_experience" ? Number(value) : value,
+    }));
+  };
+
+  const handleSelectChange = (value: string) => {
+    const numValue = Number(value);
+    setFormData((prev) => ({
+      ...prev,
+      role_id: numValue,
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
+    e.preventDefault();
+    setIsLoading(true);
+    setErrors([]);
 
-    // Validate required fields
-    if (!formData.username || !formData.email || !formData.password || !formData.full_name) {
-      setError("Vui lòng điền đầy đủ thông tin bắt buộc")
-      return
-    }
-
-    // Validate passwords match
-    if (formData.password !== formData.confirmPassword) {
-      setError("Mật khẩu xác nhận không khớp")
-      return
-    }
-
-    // Validate password strength
-    if (formData.password.length < 8) {
-      setError("Mật khẩu phải có ít nhất 8 ký tự")
-      return
-    }
-
-    // Validate doctor specific fields
-    if (activeTab === ROLE_DOCTOR) {
-      if (!formData.specialty || !formData.license_number) {
-        setError("Vui lòng điền đầy đủ thông tin chuyên môn")
-        return
-      }
+    const formErrors = validateForm();
+    if (formErrors.length > 0) {
+      setErrors(formErrors);
+      setIsLoading(false);
+      return;
     }
 
     try {
-      const registerData: RegisterRequest = {
-        username: formData.username,
-        email: formData.email,
-        password: formData.password,
-        full_name: formData.full_name,
-        phone: formData.phone || undefined,
-        role_id: activeTab,
-        is_active: activeTab === ROLE_PARENT ? true : false,
-        // Parent specific (nếu có input)
-        // address: activeTab === ROLE_PARENT && formData.address ? formData.address : undefined,
-        // emergency_contact: activeTab === ROLE_PARENT && formData.emergency_contact ? formData.emergency_contact : undefined,
-        // Doctor specific
-        specialty: activeTab === ROLE_DOCTOR ? formData.specialty : undefined,
-        license_number: activeTab === ROLE_DOCTOR ? formData.license_number : undefined,
-        clinic_name: activeTab === ROLE_DOCTOR ? formData.clinic_name : undefined,
-        clinic_address: activeTab === ROLE_DOCTOR ? formData.clinic_address : undefined,
-      }
-
-      await register(registerData)
-      if (onSuccess) {
-        onSuccess()
-      } else {
-        navigate("/")
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Đăng ký thất bại")
+      console.log("Form data:", JSON.stringify(formData, null, 2));
+      await register(formData);
+      alert("Đăng ký thành công!");
+      navigate("/login");
+    } catch (error: any) {
+      const errorMessages = error.cause?.errors?.map((err: any) => typeof err === 'string' ? err : `${err.field}: ${err.message}`) || [error.message || "Đăng ký thất bại! Vui lòng kiểm tra lại thông tin."];
+      console.error("Registration failed:", errorMessages);
+      setErrors(errorMessages);
+    } finally {
+      setIsLoading(false);
     }
-  }
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }))
-  }
-
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }))
-  }
+  };
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
+    <Card className="w-full max-w-md mx-auto">
+      <CardHeader>
+        <CardTitle>Đăng ký</CardTitle>
+        <CardDescription>Tạo tài khoản mới</CardDescription>
+      </CardHeader>
       <CardContent>
-        <Tabs value={String(activeTab)} onValueChange={v => setActiveTab(Number(v) as UserRole)} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value={String(ROLE_PARENT)} className="flex items-center gap-2">
-              <Heart className="h-4 w-4" />
-              Phụ huynh
-            </TabsTrigger>
-            <TabsTrigger value={String(ROLE_DOCTOR)} className="flex items-center gap-2">
-              <Stethoscope className="h-4 w-4" />
-              Bác sĩ
-            </TabsTrigger>
-          </TabsList>
-
-          <form onSubmit={handleSubmit} className="mt-6">
-            {error && (
-              <Alert variant="destructive" className="mb-4">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
-            {/* Common fields */}
-            <div className="space-y-2 mb-4">
-              <Label htmlFor="phone">Họ và Tên</Label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {errors.length > 0 && (
+            <Alert variant="destructive">
+              <AlertDescription>
+                <ul>
+                  {errors.map((err, index) => (
+                    <li key={index}>{err}</li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
+          <div>
+            <Label htmlFor="username">Tên người dùng</Label>
+            <Input
+              id="username"
+              type="text"
+              name="username"
+              value={formData.username}
+              onChange={handleChange}
+              placeholder="Tên người dùng"
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="Email"
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="password">Mật khẩu</Label>
+            <Input
+              id="password"
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="Mật khẩu"
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="full_name">Họ và Tên</Label>
+            <Input
+              id="full_name"
+              type="text"
+              name="full_name"
+              value={formData.full_name}
+              onChange={handleChange}
+              placeholder="Họ và Tên"
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="role_id">Vai trò</Label>
+            <Select
+              name="role_id"
+              onValueChange={handleSelectChange}
+              value={formData.role_id.toString()}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Chọn vai trò" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ROLE_ADMIN.toString()}>Quản trị viên</SelectItem>
+                <SelectItem value={ROLE_DOCTOR.toString()}>Bác sĩ</SelectItem>
+                <SelectItem value={ROLE_PARENT.toString()}>Phụ huynh</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {formData.role_id === ROLE_PARENT && (
+            <>
+              <div>
+                <Label htmlFor="number_of_children">Số con</Label>
                 <Input
-                  id="full_name"
-                  name="full_name"
+                  id="number_of_children"
+                  type="number"
+                  name="number_of_children"
+                  value={formData.number_of_children}
+                  onChange={handleChange}
+                  placeholder="Số con"
+                  min="0"
+                />
+              </div>
+              <div>
+                <Label htmlFor="children_info">Thông tin con</Label>
+                <Input
+                  id="children_info"
                   type="text"
-                  placeholder="Phạm Văn A"
-                  value={formData.full_name}
+                  name="children_info"
+                  value={formData.children_info}
                   onChange={handleChange}
-                  className="pl-10"
+                  placeholder="Thông tin về con"
                 />
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div className="space-y-2">
-                <Label htmlFor="username">Tên đăng nhập *</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="username"
-                    name="username"
-                    type="text"
-                    placeholder="username"
-                    value={formData.username}
-                    onChange={handleChange}
-                    className="pl-10"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email *</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="your@email.com"
-                    value={formData.email}
-                    onChange={handleChange}
-                    className="pl-10"
-                    required
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div className="space-y-2">
-                <Label htmlFor="password">Mật khẩu *</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={formData.password}
-                    onChange={handleChange}
-                    className="pl-10 pr-10"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Xác nhận mật khẩu *</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type="password"
-                    placeholder="••••••••"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    className="pl-10"
-                    required
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2 mb-4">
-              <Label htmlFor="phone">Số điện thoại</Label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <div>
+                <Label htmlFor="parenting_concerns">Mối quan ngại về nuôi dạy con</Label>
                 <Input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  placeholder="0123456789"
-                  value={formData.phone}
+                  id="parenting_concerns"
+                  type="text"
+                  name="parenting_concerns"
+                  value={formData.parenting_concerns}
                   onChange={handleChange}
-                  className="pl-10"
+                  placeholder="Mối quan ngại về nuôi dạy con"
                 />
               </div>
-            </div>
-            {/* Parent specific fields */}
-            {/* Doctor specific fields */}
-            <TabsContent value={String(ROLE_DOCTOR)} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="specialty">Chuyên khoa *</Label>
-                  <Select onValueChange={(value) => handleSelectChange("specialty", value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Chọn chuyên khoa" />
-                    </SelectTrigger>
-                      <SelectContent>
-                        {specializations.map((spec) => (
-                          <SelectItem key={spec} value={spec}>{spec}</SelectItem>
-                        ))}
-                        <SelectItem key="other" value="Khác">Khác</SelectItem>
-                      </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="license_number">Số chứng chỉ hành nghề *</Label>
-                  <Input
-                    id="license_number"
-                    name="license_number"
-                    type="text"
-                    placeholder="VD: 12345/BYT"
-                    value={formData.license_number}
-                    onChange={handleChange}
-                    required={activeTab === ROLE_DOCTOR}
-                  />
-                </div>
+            </>
+          )}
+          {formData.role_id === ROLE_DOCTOR && (
+            <>
+              <div>
+                <Label htmlFor="specialty">Chuyên khoa</Label>
+                <Input
+                  id="specialty"
+                  type="text"
+                  name="specialty"
+                  value={formData.specialty}
+                  onChange={handleChange}
+                  placeholder="Chuyên khoa"
+                />
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2 mb-4">
-                  <Label htmlFor="clinic_name">Tên phòng khám/Bệnh viện</Label>
-                  <Input
-                    id="clinic_name"
-                    name="clinic_name"
-                    type="text"
-                    placeholder="Bệnh viện ABC"
-                    value={formData.clinic_name}
-                    onChange={handleChange}
-                  />
-                </div>
-
-                <div className="space-y-2 mb-4">
-                  <Label htmlFor="clinic_address">Địa chỉ phòng khám</Label>
-                  <Input
-                    id="clinic_address"
-                    name="clinic_address"
-                    type="text"
-                    placeholder="123 Đường XYZ"
-                    value={formData.clinic_address}
-                    onChange={handleChange}
-                  />
-                </div>
+              <div>
+                <Label htmlFor="license_number">Số giấy phép</Label>
+                <Input
+                  id="license_number"
+                  type="text"
+                  name="license_number"
+                  value={formData.license_number}
+                  onChange={handleChange}
+                  placeholder="Số giấy phép"
+                />
               </div>
-            </TabsContent>
-
-
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Đang đăng ký...
-                </>
-              ) : (
-                "Đăng ký tài khoản"
-              )}
-            </Button>
-          </form>
-        </Tabs>
+              <div>
+                <Label htmlFor="clinic_name">Tên phòng khám</Label>
+                <Input
+                  id="clinic_name"
+                  type="text"
+                  name="clinic_name"
+                  value={formData.clinic_name}
+                  onChange={handleChange}
+                  placeholder="Tên phòng khám"
+                />
+              </div>
+              <div>
+                <Label htmlFor="clinic_address">Địa chỉ phòng khám</Label>
+                <Input
+                  id="clinic_address"
+                  type="text"
+                  name="clinic_address"
+                  value={formData.clinic_address}
+                  onChange={handleChange}
+                  placeholder="Địa chỉ phòng khám"
+                />
+              </div>
+              <div>
+                <Label htmlFor="years_experience">Số năm kinh nghiệm</Label>
+                <Input
+                  id="years_experience"
+                  type="number"
+                  name="years_experience"
+                  value={formData.years_experience}
+                  onChange={handleChange}
+                  placeholder="Số năm kinh nghiệm"
+                  min="0"
+                />
+              </div>
+              <div>
+                <Label htmlFor="bio">Tiểu sử</Label>
+                <Input
+                  id="bio"
+                  type="text"
+                  name="bio"
+                  value={formData.bio}
+                  onChange={handleChange}
+                  placeholder="Tiểu sử"
+                />
+              </div>
+            </>
+          )}
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Đang xử lý...
+              </>
+            ) : (
+              "Đăng ký"
+            )}
+          </Button>
+        </form>
       </CardContent>
     </Card>
-  )
-}
+  );
+};
 
-export default RegisterForm
+export default RegisterForm;

@@ -1,3 +1,5 @@
+// Helper functions specifically for ArticleCard component
+
 export const formatDate = (date: string | Date): string => {
   const d = new Date(date)
   return d.toLocaleDateString("vi-VN", {
@@ -51,6 +53,7 @@ export const formatRelativeTime = (date: string | Date): string => {
 }
 
 export const truncateText = (text: string, maxLength: number): string => {
+  if (!text) return '';
   if (text.length <= maxLength) return text
   return text.substring(0, maxLength) + "..."
 }
@@ -79,7 +82,25 @@ export const getInitials = (firstName: string, lastName: string): string => {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
 }
 
+// Overload for full name string
+export const getInitialsFromFullName = (fullName: string): string => {
+  if (!fullName) return 'U';
+  
+  const names = fullName.trim().split(' ');
+  if (names.length === 1) {
+    return names[0].charAt(0).toUpperCase();
+  }
+  
+  return names
+    .slice(0, 2) // Take first 2 names
+    .map(name => name.charAt(0))
+    .join('')
+    .toUpperCase();
+}
+
 export const calculateReadingTime = (content: string): number => {
+  if (!content) return 1;
+  
   const wordsPerMinute = 200
   const words = content.trim().split(/\s+/).length
   const readingTime = Math.ceil(words / wordsPerMinute)
@@ -96,3 +117,97 @@ export const debounce = <T extends (...args: any[]) => any>(
     timeoutId = setTimeout(() => func(...args), delay)
   }
 }
+
+export const formatDateTime = (dateString: string): string => {
+  const date = new Date(dateString);
+  return date.toLocaleString('vi-VN', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+export const generateExcerpt = (content: string, maxLength: number = 160): string => {
+  if (!content) return '';
+  
+  // Remove HTML tags
+  const textContent = content.replace(/<[^>]*>/g, '');
+  
+  // Truncate and ensure it ends at a word boundary
+  if (textContent.length <= maxLength) {
+    return textContent;
+  }
+  
+  const truncated = textContent.substring(0, maxLength);
+  const lastSpaceIndex = truncated.lastIndexOf(' ');
+  
+  if (lastSpaceIndex > 0) {
+    return truncated.substring(0, lastSpaceIndex) + '...';
+  }
+  
+  return truncated + '...';
+};
+
+// URL helpers
+export const getImageUrl = (imagePath?: string): string => {
+  if (!imagePath) {
+    return "/placeholder.svg?height=300&width=500";
+  }
+  
+  // If it's already a full URL, return as is
+  if (imagePath.startsWith('http')) {
+    return imagePath;
+  }
+  
+  // If it's a relative path, add base URL
+  const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+  return `${baseUrl}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+};
+
+export const getAvatarUrl = (avatarPath?: string): string => {
+  if (!avatarPath) {
+    return "/placeholder.svg?height=32&width=32";
+  }
+  
+  // If it's already a full URL, return as is
+  if (avatarPath.startsWith('http')) {
+    return avatarPath;
+  }
+  
+  // If it's a relative path, add base URL
+  const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+  return `${baseUrl}${avatarPath.startsWith('/') ? '' : '/'}${avatarPath}`;
+};
+
+// Validation helpers
+export const isValidUrl = (url: string): boolean => {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+export const sanitizeHtml = (html: string): string => {
+  // Basic HTML sanitization - remove script tags and dangerous attributes
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/on\w+="[^"]*"/g, '')
+    .replace(/javascript:/gi, '');
+};
+
+// Array helpers
+export const getFirstItem = <T>(array?: T[]): T | undefined => {
+  return array && array.length > 0 ? array[0] : undefined;
+};
+
+export const isEmpty = (value: any): boolean => {
+  if (value == null) return true;
+  if (typeof value === 'string') return value.trim().length === 0;
+  if (Array.isArray(value)) return value.length === 0;
+  if (typeof value === 'object') return Object.keys(value).length === 0;
+  return false;
+};

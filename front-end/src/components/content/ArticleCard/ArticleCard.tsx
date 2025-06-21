@@ -17,13 +17,49 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, variant = "default" 
   const isFeatured = variant === "featured"
   const isCompact = variant === "compact"
 
+  // Safe getters to handle optional fields
+  const getExcerpt = (): string => {
+    return article.excerpt || ''
+  }
+
+  const getViewCount = (): number => {
+    return article.view_count || article.views || article.interactions.views || 0
+  }
+
+  const getCommentsCount = (): number => {
+    return article.interactions.comments ||
+           article.interactions.comments_count ||
+           article.comment_count || 0
+  }
+
+  const getLikesCount = (): number => {
+    return article.interactions.likes || article.like_count || 0
+  }
+
+  const getReadingTime = (): number => {
+    return article.reading_time || 5 // Default to 5 minutes if not provided
+  }
+
+  const getAuthorInitials = (): string => {
+    if (!article.author?.full_name) return "U"
+    return article.author.full_name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+  }
+
+  const getAuthorId = (): number => {
+    return article.author?.user_id || article.author?.id || 0
+  }
+
   return (
     <Card className={`overflow-hidden h-full flex flex-col ${isFeatured ? "border-blue-200" : ""}`}>
       <Link to={`/articles/${article.article_id}`} className="block overflow-hidden">
         <div
           className={`relative overflow-hidden ${isCompact ? "h-32" : "h-48"} bg-gray-100`}
           style={{
-            backgroundImage: `url(${article.featured_image || "/placeholder.svg?height=300&width=500"})`,
+            backgroundImage: `url(${article.featured_image || article.featured_image_url || "/placeholder.svg?height=300&width=500"})`,
             backgroundSize: "cover",
             backgroundPosition: "center",
           }}
@@ -33,13 +69,26 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, variant = "default" 
       </Link>
 
       <CardContent className={`flex-1 flex flex-col ${isCompact ? "p-3" : "p-4"}`}>
-        {/* Categories */}
-        {!isCompact && article.categories && article.categories.length > 0 && (
-          <div className="mb-2">
-            <Badge variant="outline" className="text-xs">
-              {article.categories[0].name}
-            </Badge>
-          </div>
+        {/* Categories - Handle both formats */}
+        {!isCompact && (
+          <>
+            {/* Array format categories */}
+            {article.categories && article.categories.length > 0 && (
+              <div className="mb-2">
+                <Badge variant="outline" className="text-xs">
+                  {article.categories[0].name}
+                </Badge>
+              </div>
+            )}
+            {/* Single category format fallback */}
+            {(!article.categories || article.categories.length === 0) && article.category && (
+              <div className="mb-2">
+                <Badge variant="outline" className="text-xs">
+                  {article.category}
+                </Badge>
+              </div>
+            )}
+          </>
         )}
 
         {/* Title */}
@@ -53,36 +102,49 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, variant = "default" 
           </h3>
         </Link>
 
-        {/* Excerpt */}
-        {!isCompact && <p className="text-gray-600 text-sm mb-3 line-clamp-2">{truncateText(article.excerpt, 120)}</p>}
+        {/* Excerpt - Only show if exists */}
+        {!isCompact && getExcerpt() && (
+          <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+            {truncateText(getExcerpt(), 120)}
+          </p>
+        )}
 
-        {/* Author */}
+        {/* Author - Handle null author gracefully */}
         <div className="flex items-center mt-auto">
           <Avatar className={`${isCompact ? "h-6 w-6" : "h-8 w-8"} mr-2`}>
-            <AvatarImage src={article.author.avatar_url || "/placeholder.svg?height=32&width=32"} />
+            <AvatarImage
+              src={article.author?.avatar_url || "/placeholder.svg?height=32&width=32"}
+              alt={article.author?.full_name || 'Anonymous'}
+            />
             <AvatarFallback>
-              {article.author.full_name
-                ? article.author.full_name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .toUpperCase()
-                : "U"}
+              {getAuthorInitials()}
             </AvatarFallback>
           </Avatar>
           <div>
             <div className="flex items-center">
-              <Link
-                to={`/profile/${article.author.user_id}`}
-                className={`font-medium hover:text-blue-600 transition-colors ${isCompact ? "text-xs" : "text-sm"}`}
-              >
-                {article.author.full_name}
-              </Link>
-              {article.author.role_id === ROLE_DOCTOR && article.author.verified && (
-                <CheckCircle2 className={`text-blue-600 ml-1 ${isCompact ? "h-3 w-3" : "h-4 w-4"}`} />
+              {article.author ? (
+                <>
+                  <Link
+                    to={`/profile/${getAuthorId()}`}
+                    className={`font-medium hover:text-blue-600 transition-colors ${isCompact ? "text-xs" : "text-sm"}`}
+                  >
+                    {article.author.full_name}
+                  </Link>
+                  {article.author.role_id === ROLE_DOCTOR && article.author.verified && (
+                    <CheckCircle2 className={`text-blue-600 ml-1 ${isCompact ? "h-3 w-3" : "h-4 w-4"}`} />
+                  )}
+                </>
+              ) : (
+                <span className={`font-medium text-gray-500 ${isCompact ? "text-xs" : "text-sm"}`}>
+                  Anonymous
+                </span>
               )}
             </div>
-            {!isCompact && <div className="text-xs text-gray-500">{formatRelativeTime(article.created_at)}</div>}
+            {!isCompact && (
+              <div className="text-xs text-gray-500">
+                {formatRelativeTime(article.created_at)}
+              </div>
+            )}
           </div>
         </div>
       </CardContent>
@@ -91,22 +153,24 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, variant = "default" 
         <div className="flex items-center space-x-3 text-gray-500 text-xs">
           <div className="flex items-center">
             <Heart
-              className={`${isCompact ? "h-3 w-3" : "h-4 w-4"} mr-1 ${article.userInteractions?.isLiked ? "fill-red-600 text-red-600" : ""}`}
+              className={`${isCompact ? "h-3 w-3" : "h-4 w-4"} mr-1 ${
+                article.userInteractions?.isLiked ? "fill-red-600 text-red-600" : ""
+              }`}
             />
-            <span>{formatNumber(article.interactions.likes)}</span>
+            <span>{formatNumber(getLikesCount())}</span>
           </div>
           <div className="flex items-center">
             <MessageSquare className={`${isCompact ? "h-3 w-3" : "h-4 w-4"} mr-1`} />
-            <span>{formatNumber(article.interactions.comments)}</span>
+            <span>{formatNumber(getCommentsCount())}</span>
           </div>
           <div className="flex items-center">
             <Eye className={`${isCompact ? "h-3 w-3" : "h-4 w-4"} mr-1`} />
-            <span>{formatNumber(article.view_count)}</span>
+            <span>{formatNumber(getViewCount())}</span>
           </div>
         </div>
         <div className="flex items-center text-xs text-gray-500">
           <Clock className={`${isCompact ? "h-3 w-3" : "h-4 w-4"} mr-1`} />
-          <span>{article.reading_time} phút</span>
+          <span>{getReadingTime()} phút</span>
         </div>
       </CardFooter>
     </Card>
