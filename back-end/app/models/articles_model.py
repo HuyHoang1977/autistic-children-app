@@ -10,14 +10,14 @@ class Article(db.Model):
 
     # Content fields
     title = db.Column(db.String(255), nullable=False, index=True)
-    content = db.Column(db.Text, nullable=True)
+    content = db.Column(db.Text, nullable=True)  # This is the COLUMN
     content_body = db.Column(db.Text, nullable=True)
     excerpt = db.Column(db.String(255), nullable=True)
 
     # Media fields
     featured_image = db.Column(db.String(255), nullable=True)
     featured_image_url = db.Column(db.String(255), nullable=True)
-    media_attachments = db.Column(db.Text, nullable=True)  # JSON string for multiple attachments
+    media_attachments = db.Column(db.Text, nullable=True)
 
     # Author information
     author_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=True, index=True)
@@ -28,18 +28,21 @@ class Article(db.Model):
     published_at = db.Column(db.DateTime, nullable=True, index=True)
 
     # Status and metadata
-    status = db.Column(db.String(20), default='draft', nullable=False)  # 'draft', 'published', 'archived'
-    article_status = db.Column(db.Integer, default=1, nullable=False)  # 1: draft, 2: published, 3: archived
+    status = db.Column(db.String(20), default='draft', nullable=False)
+    article_status = db.Column(db.Integer, default=1, nullable=False)
     featured = db.Column(db.Boolean, default=False, nullable=False, index=True)
+
+    # ✅ Legacy fields for backward compatibility (keep these!)
     category = db.Column(db.String(100), nullable=True, index=True)
-    tags = db.Column(db.Text, nullable=True)  # JSON string of tags
+    tags = db.Column(db.Text, nullable=True)
+
     slug = db.Column(db.String(255), unique=True, nullable=True, index=True)
     meta_description = db.Column(db.String(160), nullable=True)
     reading_time = db.Column(db.Integer, nullable=True)
 
     # Engagement metrics
     like_count = db.Column(db.Integer, default=0, nullable=False, index=True)
-    likes = db.Column(db.Integer, default=0, nullable=False)  # Alias for compatibility
+    likes = db.Column(db.Integer, default=0, nullable=False)
     comment_count = db.Column(db.Integer, default=0, nullable=False)
     share_count = db.Column(db.Integer, default=0, nullable=False)
     views = db.Column(db.Integer, default=0, nullable=False)
@@ -47,25 +50,109 @@ class Article(db.Model):
     # Settings
     allow_comments = db.Column(db.Boolean, default=True, nullable=False)
 
-    # Relationships
-    content = db.relationship('Content', back_populates='articles', lazy='select')
+    # ✅ RELATIONSHIPS - FIXED: Rename to avoid conflicts
+    # CRITICAL FIX: 'content' is both a column and relationship name - this causes the conflict!
+    # Rename relationship to avoid collision with 'content' column
+    content_obj = db.relationship('Content', back_populates='articles', lazy='select')
     author = db.relationship('User', backref='articles', lazy='select')
-    article_categories = db.relationship('ArticleCategory', back_populates='article', cascade='all, delete-orphan')
-    article_tags = db.relationship('ArticleTag', back_populates='article', cascade='all, delete-orphan')
+
+    # These are also potential conflicts, so rename them too
+    article_categories = db.relationship('ArticleCategory', back_populates='article', cascade='all, delete-orphan',
+                                         lazy='select')
+    article_tags = db.relationship('ArticleTag', back_populates='article', cascade='all, delete-orphan', lazy='select')
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        # Sync like_count and likes
-        if 'like_count' in kwargs and 'likes' not in kwargs:
-            self.likes = kwargs['like_count']
-        elif 'likes' in kwargs and 'like_count' not in kwargs:
-            self.like_count = kwargs['likes']
+        """
+        ✅ FINAL FIX: Remove the relationship name conflicts
+        """
+        # ✅ Extract the problematic fields
+        category_name = kwargs.pop('category', None)
+        tags_string = kwargs.pop('tags', None)
 
+        # ✅ CRITICAL: Remove any field that might be interpreted as relationship
+        relationship_fields = [
+            'content_obj', 'author_obj', 'categories', 'tag_objects',
+            'article_categories', 'article_tags', 'author', 'comments',
+            'saved_by', 'relationships'
+        ]
+
+        for field in relationship_fields:
+            kwargs.pop(field, None)
+
+        # ✅ Call parent with remaining kwargs (should be safe now)
+        super().__init__(**kwargs)
+
+        # ✅ Set legacy fields manually AFTER parent init
+        if category_name:
+            self.category = category_name
+        if tags_string:
+            self.tags = tags_string
+
+        # ✅ Simple computed fields
         if not self.slug and self.title:
             self.slug = self.generate_slug(self.title)
         if not self.reading_time and (self.content or self.content_body):
             content_text = self.content or self.content_body or ''
             self.reading_time = self.calculate_reading_time(content_text)
+
+    @property
+    def categories(self):
+        """Get all category objects from relationships"""
+        try:
+            return [ac.category for ac in self.article_categories if ac.category]
+        except:
+            return []
+
+    @property
+    def category_names(self):
+        """Get list of category names from relationships"""
+        try:
+            names = [ac.category.name for ac in self.article_categories if ac.category]
+            # Fallback to legacy field if no relationships
+            if not names and self.category:
+                names = [self.category]
+            return names
+        except:
+            return [self.category] if self.category else []
+
+    @property
+    def primary_category_name(self):
+        """Get primary category name (first one or legacy field)"""
+        try:
+            if self.article_categories and self.article_categories[0].category:
+                return self.article_categories[0].category.name
+        except:
+            pass
+        return self.category
+
+    @property
+    def tag_objects(self):
+        """Get all tag objects from relationships"""
+        try:
+            return [at.tag for at in self.article_tags if at.tag]
+        except:
+            return []
+
+    @property
+    def tag_names(self):
+        """Get list of tag names from relationships"""
+        try:
+            names = [at.tag.name for at in self.article_tags if at.tag]
+            # Fallback to legacy field if no relationships
+            if not names and self.tags:
+                try:
+                    import json
+                    legacy_tags = json.loads(self.tags) if isinstance(self.tags, str) else []
+                    if isinstance(legacy_tags, list):
+                        names = legacy_tags
+                    elif isinstance(legacy_tags, str):
+                        names = [tag.strip() for tag in legacy_tags.split(',') if tag.strip()]
+                except:
+                    if isinstance(self.tags, str):
+                        names = [tag.strip() for tag in self.tags.split(',') if tag.strip()]
+            return names
+        except:
+            return []
 
     def __repr__(self):
         return f'<Article {self.article_id}: {self.title[:30] if self.title else "No title"}...>'
@@ -79,15 +166,17 @@ class Article(db.Model):
         if not title:
             return None
 
-        # Convert to lowercase and remove accents
-        slug = unicodedata.normalize('NFKD', title.lower())
-        slug = slug.encode('ascii', 'ignore').decode('ascii')
-
-        # Replace spaces and special characters with hyphens
-        slug = re.sub(r'[^a-z0-9]+', '-', slug)
-        slug = slug.strip('-')
-
-        return slug[:100] if slug else None  # Limit length
+        try:
+            slug = unicodedata.normalize('NFKD', title.lower())
+            slug = slug.encode('ascii', 'ignore').decode('ascii')
+            slug = re.sub(r'[^a-z0-9]+', '-', slug)
+            slug = slug.strip('-')
+            return slug[:100] if slug else None
+        except:
+            # Fallback for any unicode issues
+            slug = re.sub(r'[^a-zA-Z0-9\s]', '', title.lower())
+            slug = re.sub(r'\s+', '-', slug)
+            return slug[:100] if slug else None
 
     @staticmethod
     def calculate_reading_time(content):
@@ -95,12 +184,13 @@ class Article(db.Model):
         if not content:
             return 0
 
-        # Average reading speed: 200-250 words per minute
-        words_per_minute = 225
-        word_count = len(content.split())
-        reading_time = max(1, round(word_count / words_per_minute))
-
-        return reading_time
+        try:
+            words_per_minute = 225
+            word_count = len(content.split())
+            reading_time = max(1, round(word_count / words_per_minute))
+            return reading_time
+        except:
+            return 1
 
     @property
     def id(self):
@@ -114,18 +204,14 @@ class Article(db.Model):
 
     def to_dict(self, include_content=True):
         """Convert article to dictionary for JSON serialization"""
-        # Ensure engagement metrics are synced
         self.sync_engagement_metrics()
 
-        # Get main content (prefer content over content_body)
         main_content = self.content or self.content_body or ''
-
-        # Get featured image (prefer featured_image_url over featured_image)
         featured_img = self.featured_image_url or self.featured_image
 
         data = {
-            'id': self.article_id,  # Frontend expects 'id'
-            'article_id': self.article_id,  # Backend compatibility
+            'id': self.article_id,
+            'article_id': self.article_id,
             'content_id': self.content_id,
             'title': self.title or '',
             'excerpt': self.excerpt,
@@ -136,17 +222,26 @@ class Article(db.Model):
             'status': self.status,
             'article_status': self.article_status,
             'featured': self.featured,
-            'category': self.category,
+
+            # ✅ Category data (both legacy and new)
+            'category': self.primary_category_name,
+            'categories': [cat.to_dict() for cat in self.categories],
+            'category_names': self.category_names,
+
+            # ✅ Tag data (both legacy and new)
             'tags': self.tags,
+            'tag_objects': [tag.to_dict() for tag in self.tag_objects],
+            'tag_names': self.tag_names,
+
             'slug': self.slug,
             'meta_description': self.meta_description,
             'reading_time': self.reading_time,
             'featured_image': featured_img,
-            'featured_image_url': featured_img,  # Alias
+            'featured_image_url': featured_img,
             'media_attachments': self.media_attachments,
             'allow_comments': self.allow_comments,
 
-            # Engagement metrics (provide both naming conventions)
+            # Engagement metrics
             'interactions': {
                 'likes': self.likes or 0,
                 'views': self.views or 0,
@@ -159,7 +254,6 @@ class Article(db.Model):
             'share_count': self.share_count or 0,
             'views': self.views or 0,
 
-            # User interactions (to be populated by service layer)
             'userInteractions': {
                 'isLiked': False,
                 'isSaved': False,
@@ -167,19 +261,20 @@ class Article(db.Model):
             }
         }
 
-        # Include content only if requested (for performance)
         if include_content:
             data['content'] = main_content
-            data['content_body'] = self.content_body  # Backend compatibility
+            data['content_body'] = self.content_body
 
-        # Include author information if available
-        if self.author:
-            data['author'] = {
-                'id': self.author.user_id,
-                'username': self.author.username,
-                'full_name': self.author.full_name,
-                'avatar_url': getattr(self.author, 'avatar_url', None)
-            }
+        try:
+            if self.author:
+                data['author'] = {
+                    'id': self.author.user_id,
+                    'username': self.author.username,
+                    'full_name': self.author.full_name,
+                    'avatar_url': getattr(self.author, 'avatar_url', None)
+                }
+        except:
+            pass
 
         return data
 
@@ -195,7 +290,6 @@ class Article(db.Model):
         if comments_delta:
             self.comment_count = (self.comment_count or 0) + comments_delta
 
-        # Ensure no negative values
         self.like_count = max(0, self.like_count or 0)
         self.likes = self.like_count
         self.views = max(0, self.views or 0)
@@ -237,14 +331,29 @@ class Article(db.Model):
         ).order_by(cls.published_at.desc())
 
     @classmethod
-    def get_by_category(cls, category):
-        """Get published articles by category"""
-        return cls.query.filter(
-            db.and_(
-                db.or_(cls.status == 'published', cls.article_status == 2),
-                cls.category == category
-            )
-        ).order_by(cls.published_at.desc())
+    def get_by_category(cls, category_name):
+        """Get published articles by category name (supports both legacy and relationships)"""
+        try:
+            from app.models.categories_model import Category
+            from app.models.article_categories_model import ArticleCategory
+
+            return cls.query.outerjoin(ArticleCategory).outerjoin(Category).filter(
+                db.and_(
+                    db.or_(cls.status == 'published', cls.article_status == 2),
+                    db.or_(
+                        db.and_(Category.name == category_name, Category.is_active == True),
+                        cls.category == category_name  # Fallback to legacy field
+                    )
+                )
+            ).order_by(cls.published_at.desc())
+        except ImportError:
+            # Fallback to legacy field only
+            return cls.query.filter(
+                db.and_(
+                    db.or_(cls.status == 'published', cls.article_status == 2),
+                    cls.category == category_name
+                )
+            ).order_by(cls.published_at.desc())
 
     @classmethod
     def search(cls, query):
@@ -257,7 +366,9 @@ class Article(db.Model):
                     cls.title.ilike(search_term),
                     cls.content.ilike(search_term),
                     cls.content_body.ilike(search_term),
-                    cls.excerpt.ilike(search_term)
+                    cls.excerpt.ilike(search_term),
+                    cls.category.ilike(search_term),
+                    cls.tags.ilike(search_term)
                 )
             )
         ).order_by(cls.published_at.desc())

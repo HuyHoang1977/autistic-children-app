@@ -2,11 +2,16 @@ import apiClient from "../client";
 import { API_ENDPOINTS } from "../endpoints";
 import { authService } from "./auth.service";
 
-// Import only Article types
+// Import updated types - FIXED: Import from correct paths với tên đã đổi
 import type {
   Article,
   ArticleFilters,
-  CreateArticleRequest
+  CreateArticleRequest,
+  ArticlesResponse,
+  ArticleApiResponse,
+  ArticleInteraction,
+  ArticleSave,
+  ArticleShare,
 } from "../../types/content.types";
 
 // Request cache
@@ -39,8 +44,8 @@ const withDeduplication = <T>(
   return requestPromise;
 };
 
-// Validate filters
-const validateFilters = (filters: ArticleFilters) => {
+// Validate filters - FIXED: Better type safety
+const validateFilters = (filters: ArticleFilters): Record<string, any> => {
   const cleanFilters: Record<string, any> = {};
 
   cleanFilters.limit = filters.limit ? Math.min(Math.max(1, filters.limit), 100) : 10;
@@ -51,9 +56,6 @@ const validateFilters = (filters: ArticleFilters) => {
   }
   if (filters.author_id && filters.author_id > 0) {
     cleanFilters.author_id = filters.author_id;
-  }
-  if (filters.is_published !== undefined) {
-    cleanFilters.is_published = filters.is_published;
   }
   if (filters.search?.trim()) {
     cleanFilters.search = filters.search.trim();
@@ -144,7 +146,7 @@ export const articleService = {
   /**
    * Get articles with pagination and filters
    */
-  async getArticles(filters: ArticleFilters = {}): Promise<any> {
+  async getArticles(filters: ArticleFilters = {}): Promise<ArticlesResponse> {
     const cacheKey = createCacheKey('articles', filters);
 
     return withDeduplication(async () => {
@@ -161,8 +163,8 @@ export const articleService = {
         const cleanFilters = validateFilters(filters);
         console.log('📋 Clean filters:', cleanFilters);
 
-        // Make API request - use any to avoid TypeScript issues
-        const response: any = await apiClient.get(API_ENDPOINTS.ARTICLES.LIST, {
+        // Make API request
+        const response = await apiClient.get<ArticlesResponse>(API_ENDPOINTS.ARTICLES.LIST, {
           params: cleanFilters,
           timeout: 15000,
           headers: {
@@ -225,7 +227,9 @@ export const articleService = {
           throw new Error('Invalid article ID');
         }
 
-        const response: any = await apiClient.get(API_ENDPOINTS.ARTICLES.DETAIL(article_id));
+        const response = await apiClient.get<ArticleApiResponse<Article>>(
+          API_ENDPOINTS.ARTICLES.DETAIL(article_id)
+        );
         const responseData = response.data;
 
         if (!responseData?.success || !responseData?.data) {
@@ -252,7 +256,10 @@ export const articleService = {
         throw new Error('Article title is required');
       }
 
-      const response: any = await apiClient.post(API_ENDPOINTS.ARTICLES.CREATE, articleData);
+      const response = await apiClient.post<ArticleApiResponse<Article>>(
+        API_ENDPOINTS.ARTICLES.CREATE,
+        articleData
+      );
       const responseData = response.data;
 
       if (!responseData?.success || !responseData?.data) {
@@ -279,7 +286,10 @@ export const articleService = {
         throw new Error('Invalid article ID');
       }
 
-      const response: any = await apiClient.put(API_ENDPOINTS.ARTICLES.UPDATE(article_id), articleData);
+      const response = await apiClient.put<ArticleApiResponse<Article>>(
+        API_ENDPOINTS.ARTICLES.UPDATE(article_id),
+        articleData
+      );
       const responseData = response.data;
 
       if (!responseData?.success || !responseData?.data) {
@@ -317,7 +327,7 @@ export const articleService = {
   /**
    * Toggle like on article
    */
-  async toggleLike(content_id: number): Promise<{ liked: boolean; like_count: number }> {
+  async toggleLike(content_id: number): Promise<ArticleInteraction> {
     try {
       console.log('📡 Toggling like for content:', content_id);
 
@@ -325,7 +335,9 @@ export const articleService = {
         throw new Error('Invalid content ID');
       }
 
-      const response: any = await apiClient.post(API_ENDPOINTS.ARTICLES.TOGGLE_LIKE(content_id));
+      const response = await apiClient.post<ArticleApiResponse<ArticleInteraction>>(
+        API_ENDPOINTS.ARTICLES.TOGGLE_LIKE(content_id)
+      );
       const responseData = response.data;
 
       if (!responseData?.success || !responseData?.data) {
@@ -343,7 +355,7 @@ export const articleService = {
   /**
    * Toggle save on article
    */
-  async toggleSave(article_id: number): Promise<{ saved: boolean }> {
+  async toggleSave(article_id: number): Promise<ArticleSave> {
     try {
       console.log('📡 Toggling save for article:', article_id);
 
@@ -351,7 +363,9 @@ export const articleService = {
         throw new Error('Invalid article ID');
       }
 
-      const response: any = await apiClient.post(API_ENDPOINTS.ARTICLES.SAVE(article_id));
+      const response = await apiClient.post<ArticleApiResponse<ArticleSave>>(
+        API_ENDPOINTS.ARTICLES.SAVE(article_id)
+      );
       const responseData = response.data;
 
       if (!responseData?.success || !responseData?.data) {
@@ -367,13 +381,44 @@ export const articleService = {
   },
 
   /**
+   * Share article - FIXED: Added missing method
+   */
+  async shareArticle(article_id: number, platform?: string): Promise<ArticleShare> {
+    try {
+      console.log('📡 Sharing article:', article_id, platform);
+
+      if (!article_id || article_id <= 0) {
+        throw new Error('Invalid article ID');
+      }
+
+      const response = await apiClient.post<ArticleApiResponse<ArticleShare>>(
+        API_ENDPOINTS.ARTICLES.SHARE(article_id),
+        { platform }
+      );
+      const responseData = response.data;
+
+      if (!responseData?.success || !responseData?.data) {
+        const errorMessages = extractErrorMessages(responseData);
+        throw new Error(errorMessages.join('; ') || 'Failed to share article');
+      }
+
+      return responseData.data;
+    } catch (error: any) {
+      const errorMessage = handleApiError(error, 'shareArticle');
+      throw new Error(errorMessage);
+    }
+  },
+
+  /**
    * Get user's articles
    */
   async getMyArticles(): Promise<Article[]> {
     try {
       console.log('📡 Fetching my articles');
 
-      const response: any = await apiClient.get(API_ENDPOINTS.ARTICLES.MY_ARTICLES);
+      const response = await apiClient.get<ArticleApiResponse<Article[]>>(
+        API_ENDPOINTS.ARTICLES.MY_ARTICLES
+      );
       const responseData = response.data;
 
       return responseData?.data || [];
@@ -390,7 +435,9 @@ export const articleService = {
     try {
       console.log('📡 Fetching saved articles');
 
-      const response: any = await apiClient.get(API_ENDPOINTS.ARTICLES.SAVED_ARTICLES);
+      const response = await apiClient.get<ArticleApiResponse<Article[]>>(
+        API_ENDPOINTS.ARTICLES.SAVED_ARTICLES
+      );
       const responseData = response.data;
 
       return responseData?.data || [];
@@ -407,7 +454,9 @@ export const articleService = {
     try {
       console.log('📡 Fetching followed doctors articles');
 
-      const response: any = await apiClient.get(API_ENDPOINTS.ARTICLES.FOLLOWED_DOCTORS);
+      const response = await apiClient.get<ArticleApiResponse<Article[]>>(
+        API_ENDPOINTS.ARTICLES.FOLLOWED_DOCTORS
+      );
       const responseData = response.data;
 
       return responseData?.data || [];
@@ -424,7 +473,9 @@ export const articleService = {
     try {
       console.log('📡 Fetching featured articles');
 
-      const response: any = await apiClient.get(API_ENDPOINTS.ARTICLES.FEATURED);
+      const response = await apiClient.get<ArticleApiResponse<Article[]>>(
+        API_ENDPOINTS.ARTICLES.FEATURED
+      );
       const responseData = response.data;
 
       return responseData?.data || [];
@@ -441,7 +492,9 @@ export const articleService = {
     try {
       console.log('📡 Fetching trending articles');
 
-      const response: any = await apiClient.get(API_ENDPOINTS.ARTICLES.TRENDING);
+      const response = await apiClient.get<ArticleApiResponse<Article[]>>(
+        API_ENDPOINTS.ARTICLES.TRENDING
+      );
       const responseData = response.data;
 
       return responseData?.data || [];
@@ -482,7 +535,7 @@ export const articleService = {
         return false;
       }
 
-      const response: any = await apiClient.get(API_ENDPOINTS.ARTICLES.LIST, {
+      const response = await apiClient.get(API_ENDPOINTS.ARTICLES.LIST, {
         params: { limit: 1, page: 1 },
         timeout: 10000
       });

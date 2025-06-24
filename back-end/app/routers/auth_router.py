@@ -11,7 +11,6 @@ from flask_jwt_extended import (
 from app.services.auth_service import AuthService
 from app.validations.auth_validation import validate_login_data, validate_register_data
 from app.models.doctor_specializations_model import DoctorSpecialization
-from app.models.articles_model import Article
 from app.extensions import db
 
 # Configure logging
@@ -58,6 +57,7 @@ def get_user_id_from_jwt():
 
 @bp.route('/users', methods=['GET'])
 def get_users():
+    """Get all users"""
     logger.info('Fetching all users')
     try:
         users = auth_service.get_all_users()
@@ -71,6 +71,7 @@ def get_users():
 
 @bp.route('/specializations', methods=['GET'])
 def get_specializations():
+    """Get all doctor specializations"""
     logger.info('Fetching specializations')
     try:
         specializations = (
@@ -89,6 +90,7 @@ def get_specializations():
 
 @bp.route('/login', methods=['POST'])
 def login():
+    """User login endpoint"""
     logger.info('Login attempt')
     data = request.get_json()
 
@@ -131,6 +133,7 @@ def login():
 
 @bp.route('/register', methods=['POST'])
 def register():
+    """User registration endpoint"""
     logger.info('Registration attempt')
     data = request.get_json()
 
@@ -173,6 +176,7 @@ def register():
 @bp.route('/refresh', methods=['POST'])
 @jwt_required(refresh=True)
 def refresh():
+    """Token refresh endpoint"""
     current_user_id_str = get_jwt_identity()  # This is now string
     logger.info('Token refresh attempt for user_id: %s', current_user_id_str)
 
@@ -192,11 +196,88 @@ def refresh():
         return jsonify({"success": False, "errors": [f"Internal server error: {str(e)}"]}), 500
 
 
-# CORS preflight handler for articles
-@bp.route('/articles', methods=['OPTIONS'])
-def articles_options():
-    """Handle CORS preflight requests"""
-    logger.info('Handling OPTIONS request for /articles')
+@bp.route('/logout', methods=['POST'])
+@jwt_required()
+def logout():
+    """User logout endpoint"""
+    current_user_id_str = get_jwt_identity()
+    logger.info('Logout attempt for user_id: %s', current_user_id_str)
+
+    try:
+        # For now, just return success since we're using stateless JWT
+        # In production, you might want to implement token blacklisting
+        logger.info('Successful logout for user_id: %s', current_user_id_str)
+        return jsonify({
+            "success": True,
+            "message": "Successfully logged out"
+        }), 200
+    except Exception as e:
+        logger.error('Logout error: %s', str(e), exc_info=True)
+        return jsonify({"success": False, "errors": [f"Internal server error: {str(e)}"]}), 500
+
+
+@bp.route('/me', methods=['GET'])
+@jwt_required()
+def get_current_user():
+    """Get current authenticated user info"""
+    logger.info('Fetching current user info')
+
+    try:
+        current_user_id = get_user_id_from_jwt()
+        if not current_user_id:
+            logger.error('No valid user ID found in JWT')
+            return jsonify({
+                "success": False,
+                "error": "Invalid user identity in JWT token",
+                "error_code": "INVALID_USER_IDENTITY"
+            }), 422
+
+        # Get user from database
+        user = auth_service.auth_repo.get_user_by(user_id=current_user_id)
+        if not user:
+            logger.warning('User not found for user_id: %s', current_user_id)
+            return jsonify({
+                "success": False,
+                "error": "User not found",
+                "error_code": "USER_NOT_FOUND"
+            }), 404
+
+        if not user.is_active:
+            logger.warning('User account is deactivated for user_id: %s', current_user_id)
+            return jsonify({
+                "success": False,
+                "error": "Account is deactivated",
+                "error_code": "ACCOUNT_DEACTIVATED"
+            }), 403
+
+        user_data = auth_service.get_user_with_role(user)
+        logger.info('Successfully fetched current user info for user_id: %s', current_user_id)
+
+        return jsonify({
+            "success": True,
+            "data": user_data
+        }), 200
+
+    except Exception as e:
+        logger.error('Error fetching current user: %s', str(e), exc_info=True)
+        return jsonify({
+            "success": False,
+            "error": f"Failed to fetch user info: {str(e)}",
+            "error_code": "INTERNAL_ERROR"
+        }), 500
+
+
+# CORS preflight handlers
+@bp.route('/login', methods=['OPTIONS'])
+@bp.route('/register', methods=['OPTIONS'])
+@bp.route('/refresh', methods=['OPTIONS'])
+@bp.route('/logout', methods=['OPTIONS'])
+@bp.route('/me', methods=['OPTIONS'])
+@bp.route('/users', methods=['OPTIONS'])
+@bp.route('/specializations', methods=['OPTIONS'])
+def auth_options():
+    """Handle CORS preflight requests for auth endpoints"""
+    logger.info('Handling OPTIONS request for auth endpoints')
     response = jsonify({})
     response.headers.add('Access-Control-Allow-Origin', 'http://localhost:3000')
     response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
@@ -205,6 +286,7 @@ def articles_options():
     return response, 200
 
 
+# Debug endpoints (for development only)
 @bp.route('/debug-jwt', methods=['GET'])
 def debug_jwt():
     """Debug JWT token for troubleshooting"""
@@ -302,233 +384,93 @@ def jwt_config():
         }), 500
 
 
-@bp.route('/articles', methods=['GET'])
-def get_articles():
-    """Get paginated articles with JWT authentication"""
-    logger.info('=== GET ARTICLES START ===')
-
+@bp.route('/verify-token', methods=['POST'])
+@jwt_required()
+def verify_token():
+    """Verify if the current token is valid"""
     try:
-        # Step 1: JWT verification
-        logger.info('🔍 Step 1: JWT verification...')
+        current_user_id = get_user_id_from_jwt()
+        current_user_id_str = get_jwt_identity()
 
-        try:
-            verify_jwt_in_request()
-            current_user_id_str = get_jwt_identity()  # String from JWT
-            current_user_id = get_user_id_from_jwt()  # Integer for DB
-
-            if not current_user_id:
-                logger.error('❌ No valid user ID found in JWT')
-                return jsonify({
-                    "success": False,
-                    "error": "Invalid user identity in JWT token",
-                    "error_code": "INVALID_USER_IDENTITY"
-                }), 422
-
-            logger.info('✅ JWT verified successfully for user_id: %d (from string: %s)', current_user_id,
-                        current_user_id_str)
-
-        except Exception as jwt_error:
-            logger.error('❌ JWT Verification failed: %s', str(jwt_error))
-
-            error_message = str(jwt_error).lower()
-            if 'signature' in error_message:
-                error_code = 'INVALID_SIGNATURE'
-                user_message = 'JWT signature verification failed'
-            elif 'expired' in error_message:
-                error_code = 'TOKEN_EXPIRED'
-                user_message = 'JWT token has expired'
-            elif 'decode' in error_message or 'format' in error_message:
-                error_code = 'INVALID_TOKEN_FORMAT'
-                user_message = 'JWT token format is invalid'
-            elif 'subject' in error_message or 'string' in error_message:
-                error_code = 'INVALID_SUBJECT_FORMAT'
-                user_message = 'JWT subject format is invalid - please login again'
-            else:
-                error_code = 'JWT_VERIFICATION_FAILED'
-                user_message = f'JWT verification failed: {str(jwt_error)}'
-
+        if not current_user_id:
             return jsonify({
                 "success": False,
-                "error": user_message,
-                "error_code": error_code
-            }), 422
+                "error": "Invalid token",
+                "error_code": "INVALID_TOKEN"
+            }), 401
 
-        # Step 2: Get and validate parameters
-        logger.info('🔍 Step 2: Validating parameters...')
-        try:
-            limit = request.args.get('limit', default=10, type=int)
-            page = request.args.get('page', default=1, type=int)
-            logger.info('📋 Parameters - limit: %d, page: %d', limit, page)
-        except (ValueError, TypeError) as param_error:
-            logger.error('❌ Parameter validation failed: %s', str(param_error))
+        # Optionally check if user still exists and is active
+        user = auth_service.auth_repo.get_user_by(user_id=current_user_id)
+        if not user or not user.is_active:
             return jsonify({
                 "success": False,
-                "error": "Invalid parameters. Limit and page must be integers.",
-                "error_code": "INVALID_PARAMETERS"
-            }), 422
+                "error": "User not found or inactive",
+                "error_code": "USER_INACTIVE"
+            }), 401
 
-        # Step 3: Validate parameter ranges
-        if not (1 <= limit <= 100):
-            logger.error('❌ Invalid limit: %d', limit)
-            return jsonify({
-                "success": False,
-                "error": f"Limit must be between 1 and 100, got: {limit}",
-                "error_code": "INVALID_LIMIT"
-            }), 422
-
-        if page < 1:
-            logger.error('❌ Invalid page: %d', page)
-            return jsonify({
-                "success": False,
-                "error": f"Page must be greater than 0, got: {page}",
-                "error_code": "INVALID_PAGE"
-            }), 422
-
-        # Step 4: Check database connection and Article model
-        logger.info('🔍 Step 3: Testing database and Article model...')
-        try:
-            article_count = db.session.query(Article).count()
-            logger.info('📊 Total articles in database: %d', article_count)
-        except Exception as model_error:
-            logger.error('❌ Article model/database error: %s', str(model_error), exc_info=True)
-            return jsonify({
-                "success": True,
-                "data": [],
-                "pagination": {
-                    "current_page": page,
-                    "per_page": limit,
-                    "total": 0,
-                    "total_pages": 0,
-                    "has_more": False
-                },
-                "message": "Database connection issue - returning empty result"
-            }), 200
-
-        # Step 5: Query articles with pagination
-        logger.info('🔍 Step 4: Querying articles...')
-        try:
-            offset = (page - 1) * limit
-            logger.info('📊 Query parameters - offset: %d, limit: %d', offset, limit)
-
-            articles_query = db.session.query(Article).order_by(Article.created_at.desc())
-            articles = articles_query.offset(offset).limit(limit).all()
-
-            logger.info('✅ Query successful - retrieved %d articles', len(articles))
-
-        except Exception as query_error:
-            logger.error('❌ Database query failed: %s', str(query_error), exc_info=True)
-            return jsonify({
-                "success": True,
-                "data": [],
-                "pagination": {
-                    "current_page": page,
-                    "per_page": limit,
-                    "total": 0,
-                    "total_pages": 0,
-                    "has_more": False
-                },
-                "message": "Database query failed"
-            }), 200
-
-        # Step 6: Serialize articles
-        logger.info('🔍 Step 5: Serializing articles...')
-        try:
-            paginated_articles = []
-
-            for i, article in enumerate(articles):
-                try:
-                    # Use Article model's to_dict method if available, otherwise manual serialization
-                    if hasattr(article, 'to_dict') and callable(getattr(article, 'to_dict')):
-                        article_data = article.to_dict()
-                        logger.debug('✅ Used article.to_dict() for article %d', i)
-                    else:
-                        # Manual serialization with safe attribute access
-                        article_data = {
-                            "id": getattr(article, 'article_id', i + 1),
-                            "article_id": getattr(article, 'article_id', i + 1),
-                            "title": getattr(article, 'title', f'Article {i + 1}'),
-                            "content": getattr(article, 'content', '') or getattr(article, 'content_body', ''),
-                            "excerpt": getattr(article, 'excerpt', ''),
-                            "author_id": getattr(article, 'author_id', current_user_id),
-                            "created_at": getattr(article, 'created_at', '').isoformat() if hasattr(article,
-                                                                                                    'created_at') and getattr(
-                                article, 'created_at') else '2025-06-21T12:00:00Z',
-                            "updated_at": getattr(article, 'updated_at', '').isoformat() if hasattr(article,
-                                                                                                    'updated_at') and getattr(
-                                article, 'updated_at') else None,
-                            "status": getattr(article, 'status', 'published'),
-                            "featured": getattr(article, 'featured', False),
-                            "category": getattr(article, 'category', 'General'),
-                            "interactions": {
-                                "likes": getattr(article, 'like_count', 0) or 0,
-                                "views": getattr(article, 'views', 0) or 0,
-                                "shares": getattr(article, 'share_count', 0) or 0,
-                                "comments_count": getattr(article, 'comment_count', 0) or 0
-                            },
-                            "userInteractions": {
-                                "isLiked": False,
-                                "isSaved": False,
-                                "hasViewed": False
-                            }
-                        }
-                        logger.debug('✅ Manual serialization for article %d', i)
-
-                    paginated_articles.append(article_data)
-
-                except Exception as article_error:
-                    logger.error('❌ Failed to serialize article %d: %s', i, str(article_error))
-                    # Continue with other articles
-                    continue
-
-            logger.info('✅ Successfully serialized %d articles', len(paginated_articles))
-
-        except Exception as serialization_error:
-            logger.error('❌ Article serialization failed: %s', str(serialization_error), exc_info=True)
-            return jsonify({
-                "success": True,
-                "data": [],
-                "pagination": {
-                    "current_page": page,
-                    "per_page": limit,
-                    "total": 0,
-                    "total_pages": 0,
-                    "has_more": False
-                },
-                "message": "Article serialization failed"
-            }), 200
-
-        # Step 7: Prepare response
-        has_more = len(articles) == limit and (offset + limit) < article_count
-        total_pages = (article_count + limit - 1) // limit if article_count > 0 else 1
-
-        response_data = {
+        logger.info('Token verification successful for user_id: %s', current_user_id)
+        return jsonify({
             "success": True,
-            "data": paginated_articles,
-            "pagination": {
-                "current_page": page,
-                "per_page": limit,
-                "total": article_count,
-                "total_pages": total_pages,
-                "has_more": has_more
-            },
-            "debug_info": {
+            "data": {
                 "user_id": current_user_id,
                 "user_id_string": current_user_id_str,
-                "articles_count": len(paginated_articles),
-                "query_offset": offset
+                "valid": True
             }
-        }
+        }), 200
 
-        logger.info('📤 Successfully returning response with %d articles', len(paginated_articles))
-        logger.info('📊 Pagination: page %d/%d, total %d', page, total_pages, article_count)
-        logger.info('=== GET ARTICLES SUCCESS ===')
-
-        return jsonify(response_data), 200
-
-    except Exception as unexpected_error:
-        logger.error('❌ Unexpected error in get_articles: %s', str(unexpected_error), exc_info=True)
+    except Exception as e:
+        logger.error('Token verification error: %s', str(e), exc_info=True)
         return jsonify({
             "success": False,
-            "error": f"Unexpected server error: {str(unexpected_error)}",
-            "error_code": "UNEXPECTED_ERROR"
+            "error": "Token verification failed",
+            "error_code": "VERIFICATION_FAILED"
+        }), 401
+
+
+# Health check for auth service
+@bp.route('/health', methods=['GET'])
+def auth_health():
+    """Health check for auth service"""
+    try:
+        # Test database connection
+        db.session.execute('SELECT 1')
+
+        return jsonify({
+            "success": True,
+            "service": "auth",
+            "status": "healthy",
+            "database": "connected",
+            "endpoints": {
+                "login": "/api/auth/login",
+                "register": "/api/auth/register",
+                "refresh": "/api/auth/refresh",
+                "logout": "/api/auth/logout",
+                "me": "/api/auth/me",
+                "users": "/api/auth/users",
+                "specializations": "/api/auth/specializations"
+            }
+        }), 200
+    except Exception as e:
+        logger.error('Auth health check failed: %s', str(e))
+        return jsonify({
+            "success": False,
+            "service": "auth",
+            "status": "unhealthy",
+            "error": str(e)
         }), 500
+
+# ✅ ALL ARTICLES-RELATED FUNCTIONS HAVE BEEN REMOVED
+# Articles are now handled by /api/articles endpoints in articles_router.py
+#
+# This auth_router.py now only contains authentication-related endpoints:
+# - POST /api/auth/login          - User login
+# - POST /api/auth/register       - User registration
+# - POST /api/auth/refresh        - Token refresh
+# - POST /api/auth/logout         - User logout
+# - GET  /api/auth/me             - Get current user info
+# - GET  /api/auth/users          - Get all users
+# - GET  /api/auth/specializations - Get doctor specializations
+# - GET  /api/auth/debug-jwt      - Debug JWT token
+# - GET  /api/auth/jwt-config     - Check JWT configuration
+# - POST /api/auth/verify-token   - Verify token validity
+# - GET  /api/auth/health         - Auth service health check

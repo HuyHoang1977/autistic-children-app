@@ -17,9 +17,9 @@ class Content(db.Model):
 
     # Relationships
     author = db.relationship('User', backref=db.backref('contents', lazy=True))
-    articles = db.relationship('Article', back_populates='content', cascade='all, delete-orphan')
+    # ✅ FIXED: Updated to match the renamed relationship in Article model
+    articles = db.relationship('Article', back_populates='content_obj', cascade='all, delete-orphan')
     comments = db.relationship('Comment', back_populates='content', cascade='all, delete-orphan')
-    # Removed problematic favorites relationship - it's defined in Favorite models
 
     def to_dict(self):
         return {

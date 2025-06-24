@@ -1,180 +1,636 @@
-import type React from "react"
-import { Link } from "react-router-dom"
-import { Card, CardContent, CardFooter } from "../../ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar"
-import { Badge } from "../../ui/badge"
-import { Heart, MessageSquare, Eye, Clock, CheckCircle2 } from "lucide-react"
-import { formatRelativeTime, formatNumber, truncateText } from "../../../utils/helper"
-import type { Article } from "../../../types"
-import { ROLE_DOCTOR } from "../../../types/user.types"
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
+import { Card, CardContent } from "../../ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar";
+import { Badge } from "../../ui/badge";
+import { Button } from "../../ui/button";
+import {
+  Heart,
+  MessageCircle,
+  Share2,
+  Bookmark,
+  BookmarkCheck,
+  Clock,
+  Eye,
+  Calendar,
+  Loader2
+} from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { vi } from "date-fns/locale";
+import { articleService } from "../../../api/services/article.sevice"; // FIXED: Corrected path
+import { useAuth } from "../../../hooks/auth/useAuth";
+import { toast } from "sonner";
+import type { Article } from "../../../types/content.types"; // FIXED: Import from types
 
 interface ArticleCardProps {
-  article: Article
-  variant?: "default" | "featured" | "compact"
+  article: Article;
+  variant?: 'default' | 'featured' | 'compact' | 'list';
+  showAuthor?: boolean;
+  showActions?: boolean;
+  onLike?: (articleId: number, liked: boolean) => void;
+  onSave?: (articleId: number, saved: boolean) => void;
+  onShare?: (articleId: number) => void;
 }
 
-const ArticleCard: React.FC<ArticleCardProps> = ({ article, variant = "default" }) => {
-  const isFeatured = variant === "featured"
-  const isCompact = variant === "compact"
+const ArticleCard: React.FC<ArticleCardProps> = ({
+  article,
+  variant = 'default',
+  showAuthor = true,
+  showActions = true,
+  onLike,
+  onSave,
+  onShare
+}) => {
+  const { user } = useAuth();
+  const [isLiking, setIsLiking] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [localLiked, setLocalLiked] = useState(article.userInteractions.isLiked);
+  const [localSaved, setLocalSaved] = useState(article.userInteractions.isSaved);
+  const [localLikeCount, setLocalLikeCount] = useState(article.interactions.likes);
 
-  // Safe getters to handle optional fields
-  const getExcerpt = (): string => {
-    return article.excerpt || ''
-  }
+  const formatDate = (dateString: string) => {
+    return formatDistanceToNow(new Date(dateString), {
+      addSuffix: true,
+      locale: vi
+    });
+  };
 
-  const getViewCount = (): number => {
-    return article.view_count || article.views || article.interactions.views || 0
-  }
+  const parseTags = (tags?: string) => {
+    if (!tags) return [];
+    return tags.split(',').map(tag => tag.trim()).filter(Boolean).slice(0, 3);
+  };
 
-  const getCommentsCount = (): number => {
-    return article.interactions.comments ||
-           article.interactions.comments_count ||
-           article.comment_count || 0
-  }
+  const truncateText = (text: string, maxLength: number) => {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength).trim() + '...';
+  };
 
-  const getLikesCount = (): number => {
-    return article.interactions.likes || article.like_count || 0
-  }
+  const handleLike = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
 
-  const getReadingTime = (): number => {
-    return article.reading_time || 5 // Default to 5 minutes if not provided
-  }
+    if (!user) {
+      toast.error('Vui lòng đăng nhập để thích bài viết');
+      return;
+    }
 
-  const getAuthorInitials = (): string => {
-    if (!article.author?.full_name) return "U"
-    return article.author.full_name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-  }
+    setIsLiking(true);
+    try {
+      const result = await articleService.toggleLike(article.article_id);
 
-  const getAuthorId = (): number => {
-    return article.author?.user_id || article.author?.id || 0
-  }
+      setLocalLiked(result.liked);
+      setLocalLikeCount(result.like_count);
 
-  return (
-    <Card className={`overflow-hidden h-full flex flex-col ${isFeatured ? "border-blue-200" : ""}`}>
-      <Link to={`/articles/${article.article_id}`} className="block overflow-hidden">
-        <div
-          className={`relative overflow-hidden ${isCompact ? "h-32" : "h-48"} bg-gray-100`}
-          style={{
-            backgroundImage: `url(${article.featured_image || article.featured_image_url || "/placeholder.svg?height=300&width=500"})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        >
-          {isFeatured && <Badge className="absolute top-2 left-2 bg-blue-600">Nổi bật</Badge>}
-        </div>
-      </Link>
+      onLike?.(article.article_id, result.liked);
 
-      <CardContent className={`flex-1 flex flex-col ${isCompact ? "p-3" : "p-4"}`}>
-        {/* Categories - Handle both formats */}
-        {!isCompact && (
-          <>
-            {/* Array format categories */}
-            {article.categories && article.categories.length > 0 && (
-              <div className="mb-2">
-                <Badge variant="outline" className="text-xs">
-                  {article.categories[0].name}
-                </Badge>
+      toast.success(result.liked ? 'Đã thích bài viết' : 'Đã bỏ thích bài viết');
+    } catch (error: any) {
+      toast.error('Có lỗi xảy ra khi thích bài viết');
+    } finally {
+      setIsLiking(false);
+    }
+  };
+
+  const handleSave = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!user) {
+      toast.error('Vui lòng đăng nhập để lưu bài viết');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const result = await articleService.toggleSave(article.article_id);
+
+      setLocalSaved(result.saved);
+      onSave?.(article.article_id, result.saved);
+
+      toast.success(result.saved ? 'Đã lưu bài viết' : 'Đã bỏ lưu bài viết');
+    } catch (error: any) {
+      toast.error('Có lỗi xảy ra khi lưu bài viết');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const url = `${window.location.origin}/articles/${article.article_id}`;
+    const title = article.title;
+    const text = article.excerpt || title;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, text, url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        toast.success('Đã sao chép link bài viết');
+      }
+
+      onShare?.(article.article_id);
+
+      // Record share
+      await articleService.shareArticle(article.article_id);
+    } catch (error: any) {
+      if (error.name !== 'AbortError') {
+        toast.error('Có lỗi khi chia sẻ bài viết');
+      }
+    }
+  };
+
+  // FIXED: Added safe defaults for potentially undefined values
+  const safeReadingTime = article.reading_time || 5;
+  const safeViews = article.interactions.views || 0;
+  const safeCommentsCount = article.interactions.comments_count || 0;
+  const safeExcerpt = article.excerpt || '';
+  const safeFeaturedImage = article.featured_image || article.featured_image_url;
+
+  const renderCompactCard = () => (
+    <Card className="hover:shadow-md transition-shadow duration-200">
+      <Link to={`/articles/${article.article_id}`}>
+        <CardContent className="p-4">
+          <div className="flex gap-3">
+            {safeFeaturedImage && (
+              <div className="w-20 h-20 flex-shrink-0">
+                <img
+                  src={safeFeaturedImage}
+                  alt={article.title}
+                  className="w-full h-full object-cover rounded-lg"
+                />
               </div>
             )}
-            {/* Single category format fallback */}
-            {(!article.categories || article.categories.length === 0) && article.category && (
-              <div className="mb-2">
-                <Badge variant="outline" className="text-xs">
+
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-sm line-clamp-2 mb-1">
+                {article.title}
+              </h3>
+
+              {safeExcerpt && (
+                <p className="text-gray-600 text-xs line-clamp-2 mb-2">
+                  {truncateText(safeExcerpt, 100)}
+                </p>
+              )}
+
+              <div className="flex items-center justify-between text-xs text-gray-500">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-3 w-3" />
+                  <span>{safeReadingTime}m</span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <span className="flex items-center gap-1">
+                    <Heart className="h-3 w-3" />
+                    {localLikeCount}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <MessageCircle className="h-3 w-3" />
+                    {safeCommentsCount}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Link>
+    </Card>
+  );
+
+  const renderListCard = () => (
+    <Card className="hover:shadow-md transition-shadow duration-200">
+      <Link to={`/articles/${article.article_id}`}>
+        <CardContent className="p-0">
+          <div className="flex">
+            {safeFeaturedImage && (
+              <div className="w-48 h-32 flex-shrink-0">
+                <img
+                  src={safeFeaturedImage}
+                  alt={article.title}
+                  className="w-full h-full object-cover rounded-l-lg"
+                />
+              </div>
+            )}
+
+            <div className="flex-1 p-4">
+              {/* Category */}
+              {article.category && (
+                <Badge variant="secondary" className="mb-2">
                   {article.category}
                 </Badge>
+              )}
+
+              <h3 className="font-semibold text-lg line-clamp-2 mb-2">
+                {article.title}
+              </h3>
+
+              {safeExcerpt && (
+                <p className="text-gray-600 line-clamp-2 mb-3">
+                  {safeExcerpt}
+                </p>
+              )}
+
+              {/* Meta Info */}
+              <div className="flex items-center justify-between">
+                {showAuthor && article.author && (
+                  <div className="flex items-center gap-2">
+                    <Avatar className="w-6 h-6">
+                      <AvatarImage src={article.author.avatar_url} />
+                      <AvatarFallback className="text-xs">
+                        {article.author.full_name.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm text-gray-600">
+                      {article.author.full_name}
+                    </span>
+                    <span className="text-xs text-gray-400">•</span>
+                    <span className="text-xs text-gray-500">
+                      {formatDate(article.published_at || article.created_at)}
+                    </span>
+                  </div>
+                )}
+
+                {showActions && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleLike}
+                      disabled={isLiking}
+                      className={`h-8 px-2 ${localLiked ? 'text-red-600' : 'text-gray-600'}`}
+                    >
+                      {isLiking ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Heart className={`h-4 w-4 ${localLiked ? 'fill-current' : ''}`} />
+                      )}
+                      <span className="ml-1 text-xs">{localLikeCount}</span>
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      className={`h-8 px-2 ${localSaved ? 'text-blue-600' : 'text-gray-600'}`}
+                    >
+                      {isSaving ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : localSaved ? (
+                        <BookmarkCheck className="h-4 w-4" />
+                      ) : (
+                        <Bookmark className="h-4 w-4" />
+                      )}
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleShare}
+                      className="h-8 px-2 text-gray-600"
+                    >
+                      <Share2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
+            </div>
+          </div>
+        </CardContent>
+      </Link>
+    </Card>
+  );
+
+  const renderDefaultCard = () => (
+    <Card className="overflow-hidden hover:shadow-lg transition-all duration-200 hover:-translate-y-1">
+      <Link to={`/articles/${article.article_id}`} className="block">
+        {/* Featured Image */}
+        {safeFeaturedImage && (
+          <div className="relative h-48 overflow-hidden">
+            <img
+              src={safeFeaturedImage}
+              alt={article.title}
+              className="w-full h-full object-cover transition-transform duration-200 hover:scale-105"
+            />
+
+            {/* Category Badge */}
+            {article.category && (
+              <Badge
+                variant="secondary"
+                className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm"
+              >
+                {article.category}
+              </Badge>
             )}
-          </>
+
+            {/* Reading Time */}
+            <div className="absolute top-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {safeReadingTime}m
+            </div>
+          </div>
         )}
 
-        {/* Title */}
-        <Link to={`/articles/${article.article_id}`} className="block">
-          <h3
-            className={`font-bold text-gray-900 hover:text-blue-600 transition-colors ${
-              isCompact ? "text-base line-clamp-2" : "text-xl mb-2"
-            }`}
-          >
+        <CardContent className="p-4">
+          {/* Title */}
+          <h3 className="font-semibold text-lg line-clamp-2 mb-2 hover:text-blue-600 transition-colors">
             {article.title}
           </h3>
-        </Link>
 
-        {/* Excerpt - Only show if exists */}
-        {!isCompact && getExcerpt() && (
-          <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-            {truncateText(getExcerpt(), 120)}
-          </p>
+          {/* Excerpt */}
+          {safeExcerpt && (
+            <p className="text-gray-600 text-sm line-clamp-3 mb-3">
+              {safeExcerpt}
+            </p>
+          )}
+
+          {/* Tags */}
+          {article.tags && (
+            <div className="flex flex-wrap gap-1 mb-3">
+              {parseTags(article.tags).map((tag, index) => (
+                <Badge key={index} variant="outline" className="text-xs">
+                  #{tag}
+                </Badge>
+              ))}
+            </div>
+          )}
+
+          {/* Author & Meta */}
+          {showAuthor && article.author && (
+            <div className="flex items-center gap-2 mb-3">
+              <Avatar className="w-8 h-8">
+                <AvatarImage src={article.author.avatar_url} />
+                <AvatarFallback className="text-sm">
+                  {article.author.full_name.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {article.author.full_name}
+                </p>
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <Calendar className="h-3 w-3" />
+                  <span>{formatDate(article.published_at || article.created_at)}</span>
+                  <span>•</span>
+                  <div className="flex items-center gap-1">
+                    <Eye className="h-3 w-3" />
+                    <span>{safeViews}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Actions */}
+          {showActions && (
+            <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleLike}
+                  disabled={isLiking}
+                  className={`h-9 px-3 ${localLiked ? 'text-red-600 bg-red-50' : 'text-gray-600'}`}
+                >
+                  {isLiking ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Heart className={`h-4 w-4 mr-2 ${localLiked ? 'fill-current' : ''}`} />
+                  )}
+                  <span className="text-sm">{localLikeCount}</span>
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-9 px-3 text-gray-600"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Navigate to comments section
+                    window.location.href = `/articles/${article.article_id}#comments`;
+                  }}
+                >
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  <span className="text-sm">{safeCommentsCount}</span>
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className={`h-9 px-3 ${localSaved ? 'text-blue-600 bg-blue-50' : 'text-gray-600'}`}
+                >
+                  {isSaving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : localSaved ? (
+                    <BookmarkCheck className="h-4 w-4" />
+                  ) : (
+                    <Bookmark className="h-4 w-4" />
+                  )}
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleShare}
+                  className="h-9 px-3 text-gray-600"
+                >
+                  <Share2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Link>
+    </Card>
+  );
+
+  const renderFeaturedCard = () => (
+    <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-gradient-to-br from-white to-blue-50">
+      <Link to={`/articles/${article.article_id}`} className="block">
+        {/* Featured Image */}
+        {safeFeaturedImage && (
+          <div className="relative h-56 overflow-hidden">
+            <img
+              src={safeFeaturedImage}
+              alt={article.title}
+              className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
+            />
+
+            {/* Featured Badge */}
+            <div className="absolute top-3 left-3">
+              <Badge className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white border-0">
+                ⭐ Nổi bật
+              </Badge>
+            </div>
+
+            {/* Category */}
+            {article.category && (
+              <Badge
+                variant="secondary"
+                className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm"
+              >
+                {article.category}
+              </Badge>
+            )}
+
+            {/* Overlay gradient */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+          </div>
         )}
 
-        {/* Author - Handle null author gracefully */}
-        <div className="flex items-center mt-auto">
-          <Avatar className={`${isCompact ? "h-6 w-6" : "h-8 w-8"} mr-2`}>
-            <AvatarImage
-              src={article.author?.avatar_url || "/placeholder.svg?height=32&width=32"}
-              alt={article.author?.full_name || 'Anonymous'}
-            />
-            <AvatarFallback>
-              {getAuthorInitials()}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <div className="flex items-center">
-              {article.author ? (
-                <>
-                  <Link
-                    to={`/profile/${getAuthorId()}`}
-                    className={`font-medium hover:text-blue-600 transition-colors ${isCompact ? "text-xs" : "text-sm"}`}
-                  >
+        <CardContent className="p-6">
+          {/* Title */}
+          <h3 className="font-bold text-xl line-clamp-2 mb-3 hover:text-blue-600 transition-colors">
+            {article.title}
+          </h3>
+
+          {/* Excerpt */}
+          {safeExcerpt && (
+            <p className="text-gray-600 line-clamp-3 mb-4 leading-relaxed">
+              {safeExcerpt}
+            </p>
+          )}
+
+          {/* Author & Stats */}
+          <div className="flex items-center justify-between mb-4">
+            {showAuthor && article.author && (
+              <div className="flex items-center gap-3">
+                <Avatar className="w-10 h-10 ring-2 ring-blue-100">
+                  <AvatarImage src={article.author.avatar_url} />
+                  <AvatarFallback className="bg-blue-100 text-blue-600 font-semibold">
+                    {article.author.full_name.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+
+                <div>
+                  <p className="font-medium text-gray-900">
                     {article.author.full_name}
-                  </Link>
-                  {article.author.role_id === ROLE_DOCTOR && article.author.verified && (
-                    <CheckCircle2 className={`text-blue-600 ml-1 ${isCompact ? "h-3 w-3" : "h-4 w-4"}`} />
-                  )}
-                </>
-              ) : (
-                <span className={`font-medium text-gray-500 ${isCompact ? "text-xs" : "text-sm"}`}>
-                  Anonymous
-                </span>
-              )}
-            </div>
-            {!isCompact && (
-              <div className="text-xs text-gray-500">
-                {formatRelativeTime(article.created_at)}
+                  </p>
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <Calendar className="h-3 w-3" />
+                    <span>{formatDate(article.published_at || article.created_at)}</span>
+                  </div>
+                </div>
               </div>
             )}
-          </div>
-        </div>
-      </CardContent>
 
-      <CardFooter className={`border-t flex justify-between items-center ${isCompact ? "px-3 py-2" : "px-4 py-3"}`}>
-        <div className="flex items-center space-x-3 text-gray-500 text-xs">
-          <div className="flex items-center">
-            <Heart
-              className={`${isCompact ? "h-3 w-3" : "h-4 w-4"} mr-1 ${
-                article.userInteractions?.isLiked ? "fill-red-600 text-red-600" : ""
-              }`}
-            />
-            <span>{formatNumber(getLikesCount())}</span>
+            <div className="flex items-center gap-4 text-sm text-gray-500">
+              <div className="flex items-center gap-1">
+                <Eye className="h-4 w-4" />
+                <span>{safeViews}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Clock className="h-4 w-4" />
+                <span>{safeReadingTime}m</span>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center">
-            <MessageSquare className={`${isCompact ? "h-3 w-3" : "h-4 w-4"} mr-1`} />
-            <span>{formatNumber(getCommentsCount())}</span>
-          </div>
-          <div className="flex items-center">
-            <Eye className={`${isCompact ? "h-3 w-3" : "h-4 w-4"} mr-1`} />
-            <span>{formatNumber(getViewCount())}</span>
-          </div>
-        </div>
-        <div className="flex items-center text-xs text-gray-500">
-          <Clock className={`${isCompact ? "h-3 w-3" : "h-4 w-4"} mr-1`} />
-          <span>{getReadingTime()} phút</span>
-        </div>
-      </CardFooter>
+
+          {/* Tags */}
+          {article.tags && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {parseTags(article.tags).map((tag, index) => (
+                <Badge key={index} variant="outline" className="text-xs hover:bg-blue-50 transition-colors">
+                  #{tag}
+                </Badge>
+              ))}
+            </div>
+          )}
+
+          {/* Actions */}
+          {showActions && (
+            <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleLike}
+                  disabled={isLiking}
+                  className={`h-10 px-4 rounded-full ${
+                    localLiked 
+                      ? 'text-red-600 bg-red-50 hover:bg-red-100' 
+                      : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {isLiking ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Heart className={`h-4 w-4 mr-2 ${localLiked ? 'fill-current' : ''}`} />
+                  )}
+                  <span className="font-medium">{localLikeCount}</span>
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-10 px-4 rounded-full text-gray-600 hover:bg-gray-50"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.location.href = `/articles/${article.article_id}#comments`;
+                  }}
+                >
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  <span className="font-medium">{safeCommentsCount}</span>
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className={`h-10 px-4 rounded-full ${
+                    localSaved 
+                      ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' 
+                      : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {isSaving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : localSaved ? (
+                    <BookmarkCheck className="h-4 w-4" />
+                  ) : (
+                    <Bookmark className="h-4 w-4" />
+                  )}
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleShare}
+                  className="h-10 px-4 rounded-full text-gray-600 hover:bg-gray-50"
+                >
+                  <Share2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Link>
     </Card>
-  )
-}
+  );
 
-export default ArticleCard
+  // Render based on variant
+  switch (variant) {
+    case 'compact':
+      return renderCompactCard();
+    case 'list':
+      return renderListCard();
+    case 'featured':
+      return renderFeaturedCard();
+    default:
+      return renderDefaultCard();
+  }
+};
+
+export default ArticleCard;
