@@ -1,133 +1,211 @@
-// Base User từ bảng USERS
-export interface BaseUser {
-  user_id: number
-  username: string
-  email: string
-  first_name: string
-  last_name: string
-  phone?: string
-  avatar_url?: string
-  bio?: string
-  is_active: boolean
-  created_at: Date
-  updated_at: Date
+// Role ID constants
+export const ROLE_ADMIN = 1;
+export const ROLE_DOCTOR = 2;
+export const ROLE_PARENT = 3;
+export const ROLE_GUEST = 0;
+
+// Role model
+export interface RoleInfo {
+  role_id: number;
+  role_name: string;
+  description?: string | null;
+  is_active?: boolean | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
-export enum UserRole {
-  GUEST = "guest",
-  PARENT = "parent",
-  DOCTOR = "doctor",
-  ADMIN = "admin",
+// Base User từ bảng USERS
+export interface BaseUser {
+  user_id: number;
+  username: string;
+  email: string; // ✅ Đảm bảo email luôn có
+  full_name: string;
+  phone?: string | null;
+  avatar_url?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  is_active: boolean;
+  user_type?: number | null;
+  role_id: number; // ✅ Required
 }
 
 // Parent User từ bảng PARENTS
+export interface ParentInfo {
+  parent_id: number;
+  user_id: number;
+  number_of_children?: number | null;
+  children_info?: string | null;
+  parenting_concerns?: string | null;
+  last_activity?: string | null;
+  role_id?: number | null;
+}
+
 export interface ParentUser extends BaseUser {
-  role: UserRole.PARENT
-  parent_id: number
-  number_of_children: number
-  address?: string
-  emergency_contact?: string
-  last_activity: Date
-  children?: ChildInfo[]
-  followedDoctors?: DoctorFollow[]
+  role_id: typeof ROLE_PARENT;
+  parent_info: ParentInfo | null;
 }
 
 // Doctor User từ bảng DOCTORS
+export interface DoctorInfo {
+  doctor_id: number;
+  user_id: number;
+  license_number?: string | null;
+  specialty?: string | null;
+  years_experience?: number | null;
+  bio?: string | null;
+  clinic_name?: string | null;
+  clinic_address?: string | null;
+  verified?: boolean | null;
+  verification_date?: string | null;
+  rating?: number | null;
+  total_reviews?: number | null;
+  role_id?: number | null;
+}
+
 export interface DoctorUser extends BaseUser {
-  role: UserRole.DOCTOR
-  doctor_id: number
-  specialty: string
-  qualifications: string
-  license_number: string
-  clinic_name?: string
-  clinic_address?: string
-  verified: boolean
-  verification_date?: Date
-  total_reviews: number
-  total_rating: number
-  specializations?: DoctorSpecialization[]
-  followers?: DoctorFollow[]
+  role_id: typeof ROLE_DOCTOR;
+  doctor_info: DoctorInfo | null;
 }
 
 // Admin User từ bảng ADMINS
-export interface AdminUser extends BaseUser {
-  role: UserRole.ADMIN
-  admin_id: number
-  admin_role: string
-  permissions: string
-  last_login: Date
+export interface AdminInfo {
+  admin_id: number;
+  user_id: number;
+  admin_role?: string | null;
+  permissions?: string | null;
+  last_login?: string | null;
+  role_id?: number | null;
 }
 
-// Child Info từ bảng CHILD
+export interface AdminUser extends BaseUser {
+  role_id: typeof ROLE_ADMIN;
+  admin_info: AdminInfo | null;
+}
+
+// Child Info từ bảng CHILDS
 export interface ChildInfo {
-  child_id: number
-  parent_id: number
-  birth_date: Date
-  gender: string
-  height?: number
-  weight?: number
-  medical_history?: string
-  vaccination_record?: string
-  created_at: Date
-  updated_at: Date
+  child_id: number;
+  parent_id: number;
+  name: string;
+  birth_date: string;
+  gender: string;
+  weight?: number | null;
+  height?: number | null;
+  medical_history?: string | null;
+  allergies?: string | null;
+  vaccination_record?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 // Doctor Specialization
 export interface DoctorSpecialization {
-  doctor_id: number
-  specialty: string
-  is_primary: boolean
+  doctor_id: number;
+  specialization: string;
+  is_primary: boolean;
 }
 
 // Doctor Follow
 export interface DoctorFollow {
-  follow_id: number
-  parent_id: number
-  doctor_id: number
-  followed_at: Date
+  follow_id: number;
+  parent_id: number;
+  doctor_id: number;
+  followed_at: string;
+  is_active: boolean;
 }
 
-// Guest user (không đăng nhập)
+// ✅ Fixed Guest user - thêm email để tương thích
 export interface GuestUser {
-  role: UserRole.GUEST
-  sessionId: string
+  user_id: 0; // ✅ Thêm user_id
+  role_id: typeof ROLE_GUEST;
+  sessionId: string;
+  username: string;
+  email: string; // ✅ Thêm email để tương thích
+  full_name: string;
+  is_active: false;
+  phone?: string | null;
+  avatar_url?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  user_type?: number | null;
 }
 
-// Union type
-export type User = ParentUser | DoctorUser | AdminUser | GuestUser
+// ✅ Authenticated Users only (không bao gồm Guest)
+export type AuthenticatedUser = ParentUser | DoctorUser | AdminUser;
+
+// ✅ All Users including Guest
+export type User = AuthenticatedUser | GuestUser;
 
 // Type guards
-export const isParentUser = (user: User): user is ParentUser => {
-  return user.role === UserRole.PARENT
+export function isParentUser(user: User): user is ParentUser {
+  return user.role_id === ROLE_PARENT && !!(user as ParentUser).parent_info;
 }
 
-export const isDoctorUser = (user: User): user is DoctorUser => {
-  return user.role === UserRole.DOCTOR
+export function isDoctorUser(user: User): user is DoctorUser {
+  return user.role_id === ROLE_DOCTOR && !!(user as DoctorUser).doctor_info;
 }
 
-export const isAdminUser = (user: User): user is AdminUser => {
-  return user.role === UserRole.ADMIN
+export function isAdminUser(user: User): user is AdminUser {
+  return user.role_id === ROLE_ADMIN && !!(user as AdminUser).admin_info;
 }
 
-export const isGuestUser = (user: User): user is GuestUser => {
-  return user.role === UserRole.GUEST
+export function isGuestUser(user: User): user is GuestUser {
+  return user.role_id === ROLE_GUEST && !!(user as GuestUser).sessionId;
+}
+
+export function isAuthenticatedUser(user: User): user is AuthenticatedUser {
+  return user.role_id !== ROLE_GUEST && user.user_id > 0;
 }
 
 // Auth types
 export interface LoginRequest {
-  email: string
-  password: string
+  email: string;
+  password: string;
 }
 
+// ✅ Fixed - remove duplicate RegisterRequest
 export interface RegisterRequest {
-  username: string
-  email: string
-  password: string
-  first_name: string
-  last_name: string
-  phone?: string
-  role: UserRole.PARENT
-  // Parent specific
-  address?: string
-  emergency_contact?: string
+  username: string;
+  email: string;
+  password: string;
+  full_name: string;
+  phone?: string;
+  role_id: number;
+  is_active?: boolean;
+
+  // Parent specific fields
+  number_of_children?: number;
+  children_info?: string;
+  parenting_concerns?: string;
+
+  // Doctor specific fields
+  specialty?: string;
+  license_number?: string;
+  clinic_name?: string;
+  clinic_address?: string;
+  years_experience?: number;
+  bio?: string;
+}
+
+// Auth Response
+export interface AuthResponse {
+  success: boolean;
+  data?: {
+    user: AuthenticatedUser; // ✅ Only authenticated users can login
+    token: string;
+    refresh_token?: string;
+  };
+  errors?: Array<string | { field: string; message: string }>;
+  error?: string;
+}
+
+// User Context types for React
+export interface UserContextType {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (credentials: LoginRequest) => Promise<void>;
+  register: (userData: RegisterRequest) => Promise<void>;
+  logout: () => Promise<void>;
+  updateUser: (userData: Partial<BaseUser>) => Promise<void>;
 }

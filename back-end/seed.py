@@ -1,4 +1,4 @@
-# seeds.py
+from werkzeug.security import generate_password_hash
 from app.models.users_model import User
 from app.models.roles_model import Role
 from app.models.admins_model import Admin
@@ -9,47 +9,47 @@ from app import create_app, db
 def seed_data():
     app = create_app()
     with app.app_context():
-        # # Xóa dữ liệu cũ (nếu muốn làm mới)
-        # db.session.query(Admin).delete()
-        # db.session.query(Doctor).delete()
-        # db.session.query(Parent).delete()
-        # db.session.query(User).delete()
-        # db.session.query(Role).delete()
-        # db.session.commit()
-
         # Seed roles
-        admin_role = Role(role_name='Admin', description='Administrator')
-        doctor_role = Role(role_name='Doctor', description='Medical Professional')
-        parent_role = Role(role_name='Parent', description='Parent User')
+        admin_role = Role(role_name='ADMIN', description='Administrator')
+        doctor_role = Role(role_name='DOCTOR', description='Medical Professional')
+        parent_role = Role(role_name='PARENT', description='Parent User')
         db.session.add_all([admin_role, doctor_role, parent_role])
         db.session.commit()
 
-        # Seed users
+        # Seed users with password_hash
         admin_user = User(
             username='admin',
             email='admin@example.com',
             full_name='Admin User',
             user_type=1,
-            role_id=admin_role.role_id
+            is_active=True,
+            role_id=admin_role.role_id,
+            phone='0123456789'
         )
+        admin_user.password = '12345678'
+
         doctor_user = User(
             username='doctor',
             email='doctor@example.com',
             full_name='Doctor User',
             user_type=2,
-            role_id=doctor_role.role_id
+            is_active=True,
+            role_id=doctor_role.role_id,
+            phone='0123456788'
         )
+        doctor_user.password = '12345678'
+
         parent_user = User(
             username='parent',
             email='parent@example.com',
             full_name='Parent User',
             user_type=3,
-            role_id=parent_role.role_id
+            is_active=True,
+            role_id=parent_role.role_id,
+            phone='0123456787'
         )
-        parent_user.set_password('123456')
-        admin_user.set_password('123456')
-        doctor_user.set_password('123456')
-        
+        parent_user.password = '12345678'
+
         db.session.add_all([admin_user, doctor_user, parent_user])
         db.session.commit()
 

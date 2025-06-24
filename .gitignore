@@ -1,8 +1,9 @@
-
+# Python
 *.pyc
 __pycache__/
+.env
+.elasticbeanstalk
+autistic-children-app.iml
+inspectionProfiles/
+.idea/
 
-.elasticbeanstalkautistic-children-app.iml
-inspectionProfiles
-.idea
-.idea
