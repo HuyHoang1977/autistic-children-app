@@ -1,14 +1,17 @@
 import os
+
 from datetime import timedelta
 from flask import Flask, jsonify
 from flask_jwt_extended import JWTManager
 from app.extensions import db
+from flask_cors import CORS
 from app.routers.auth_router import bp as auth_bp
 from app.routers.image_router import bp as image_bp
 
 
 def create_app():
     app = Flask(__name__)
+    CORS(app)
 
     # JWT Configuration
     app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
