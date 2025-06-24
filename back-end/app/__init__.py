@@ -2,11 +2,13 @@
 # XÓA phần @app.after_request để tránh duplicate headers
 
 import os
+
 from datetime import timedelta
 from flask import Flask, jsonify, request
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 from app.extensions import db
+from flask_cors import CORS
 from app.routers.auth_router import bp as auth_bp
 from app.routers.image_router import bp as image_bp
 # ✅ Import the new articles router
@@ -15,6 +17,7 @@ from app.routers.articles_router import bp as articles_bp
 
 def create_app():
     app = Flask(__name__)
+    CORS(app)
 
     # ✅ CORS Configuration - CRITICAL FIX
     CORS(app,
