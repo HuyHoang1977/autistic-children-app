@@ -1,5 +1,6 @@
 import React, { memo } from 'react';
-import { useArticles, useArticlesDebug } from '../../hooks/useArticles';
+import { useArticles } from '../../hooks/api/useArticles';
+import { useArticlesDebug } from '../../hooks/api/useArticlesDebug';
 import ArticleCard from '../../components/content/ArticleCard/ArticleCard';
 import type { ArticleFilters } from '../../types/content.types';
 

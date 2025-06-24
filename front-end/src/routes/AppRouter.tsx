@@ -3,17 +3,16 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
 import { AuthProvider } from "../hooks/auth/useAuth"
 import AppLayout from "../components/layout/AppLayout"
 
-// // Public pages
-// import HomePage from "../pages/public/HomePage"
-// import AboutPage from "../pages/public/AboutPage"
-// import ContactPage from "../pages/public/ContactPage"
-
 // Auth pages
 import LoginPage from "../pages/auth/LoginPage"
 import RegisterPage from "../pages/auth/RegisterPage"
-import HomePage from "../pages/public/HompPage" 
-// import ForgotPasswordPage from "../pages/auth/ForgotPasswordPage"
+import HomePage from "../pages/public/HompPage"
 
+// Articles pages
+import ArticlesListPage from "../pages/articles/ArticlesListPage"
+import CreateArticlePage from "../pages/articles/CreateArticlePage"
+// import ArticleDetailPage from "../pages/articles/ArticleDetailPage" // Uncomment when ready
+// import EditArticlePage from "../pages/articles/EditArticlePage" // Uncomment when ready
 
 const AppRouter: React.FC = () => {
   return (
@@ -21,9 +20,20 @@ const AppRouter: React.FC = () => {
       <AuthProvider>
         <Routes>
           <Route element={<AppLayout />}>
+            {/* Auth routes */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+
+            {/* Public routes */}
             <Route path="/" element={<HomePage />} />
+
+            {/* Articles routes */}
+            <Route path="/articles" element={<ArticlesListPage />} />
+            <Route path="/articles/create" element={<CreateArticlePage />} />
+
+            {/* Future article routes - uncomment when pages are ready */}
+            {/* <Route path="/articles/:id" element={<ArticleDetailPage />} /> */}
+            {/* <Route path="/articles/:id/edit" element={<EditArticlePage />} /> */}
           </Route>
         </Routes>
       </AuthProvider>

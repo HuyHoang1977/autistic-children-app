@@ -1,257 +1,164 @@
-"use client"
+import { useState, useEffect, useCallback } from 'react';
+import type { Article, ArticleFilters, ArticlePaginationData } from '../../types/content.types';
 
-import { useState, useEffect, useCallback } from "react"
-import { useAuth } from "../auth/useAuth"
-import { articleService } from "../../api/services/article.sevice"
-import type { Article, ArticleFilters } from "../../types"
-import { ROLE_PARENT, ROLE_DOCTOR } from "../../types/user.types"
+// Return type for useArticles hook - matching the usage in both ArticlesList and ArticlesListPage
+export interface UseArticlesReturn {
+  articles: Article[];
+  loading: boolean; // Keep as 'loading' for ArticlesList compatibility
+  isLoading: boolean; // Also provide 'isLoading' for ArticlesListPage compatibility
+  error: string | null;
+  pagination: ArticlePaginationData | null;
+  fetchArticles: (filters?: ArticleFilters) => Promise<void>;
+  refetch: () => void;
+  clearError: () => void;
+}
 
-export const useArticles = (filters: ArticleFilters = {}) => {
-  const { user } = useAuth()
-  const [articles, setArticles] = useState<Article[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [hasMore, setHasMore] = useState(true)
-  const [page, setPage] = useState(1)
+/**
+ * Hook for managing articles data fetching and state
+ */
+export const useArticles = (initialFilters: ArticleFilters = { limit: 10, page: 1 }): UseArticlesReturn => {
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<ArticlePaginationData | null>(null);
+  const [currentFilters, setCurrentFilters] = useState<ArticleFilters>(initialFilters);
 
-  const fetchArticles = useCallback(
-    async (reset = false) => {
-      setIsLoading(true)
-      setError(null)
+  // Mock fetch function - replace with actual API call
+  const fetchArticles = useCallback(async (filters: ArticleFilters = currentFilters) => {
+    try {
+      setIsLoading(true);
+      setError(null);
 
-      try {
-        const currentPage = reset ? 1 : page
-        const response = await articleService.getArticles({
-          ...filters,
-          page: currentPage,
-          limit: 10,
-        })
+      // TODO: Replace with actual API service call
+      // const response = await articleService.getArticles(filters);
 
-        if (reset) {
-          setArticles(response.data)
-          setPage(2)
-        } else {
-          setArticles((prev) => [...prev, ...response.data])
-          setPage(currentPage + 1)
+      // Mock response for now
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Mock articles data
+      const mockArticles: Article[] = [
+        {
+          article_id: 1,
+          title: "Chăm sóc sức khỏe trẻ em trong mùa đông",
+          content: "Nội dung bài viết...",
+          excerpt: "Hướng dẫn chăm sóc sức khỏe trẻ em hiệu quả trong mùa đông lạnh",
+          category: "Sức khỏe trẻ em",
+          featured_image: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1f?w=400&h=200&fit=crop",
+          created_at: new Date().toISOString(),
+          author: {
+            id: 1,
+            user_id: 1,
+            username: "dr_nguyen",
+            full_name: "BS. Nguyễn Văn A",
+            verified: true
+          },
+          interactions: {
+            likes: 45,
+            views: 1200,
+            comments_count: 8
+          },
+          userInteractions: {
+            isLiked: false,
+            isSaved: false
+          },
+          reading_time: 5
+        },
+        {
+          article_id: 2,
+          title: "Dinh dưỡng cho trẻ phát triển toàn diện",
+          content: "Nội dung bài viết...",
+          excerpt: "Những nguyên tắc dinh dưỡng cơ bản giúp trẻ phát triển khỏe mạnh",
+          category: "Dinh dưỡng",
+          featured_image: "https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=400&h=200&fit=crop",
+          created_at: new Date(Date.now() - 86400000).toISOString(),
+          author: {
+            id: 2,
+            user_id: 2,
+            username: "dr_tran",
+            full_name: "BS. Trần Thị B",
+            verified: true
+          },
+          interactions: {
+            likes: 32,
+            views: 980,
+            comments_count: 12
+          },
+          userInteractions: {
+            isLiked: true,
+            isSaved: false
+          },
+          reading_time: 7
+        },
+        {
+          article_id: 3,
+          title: "Phát triển tâm lý trẻ em qua các giai đoạn",
+          content: "Nội dung bài viết...",
+          excerpt: "Hiểu rõ các giai đoạn phát triển tâm lý để hỗ trợ trẻ tốt nhất",
+          category: "Phát triển tâm lý",
+          featured_image: "https://images.unsplash.com/photo-1544027993-37dbfe43562a?w=400&h=200&fit=crop",
+          created_at: new Date(Date.now() - 172800000).toISOString(),
+          author: {
+            id: 3,
+            user_id: 3,
+            username: "dr_pham",
+            full_name: "BS. Phạm Văn C",
+            verified: true
+          },
+          interactions: {
+            likes: 28,
+            views: 750,
+            comments_count: 5
+          },
+          userInteractions: {
+            isLiked: false,
+            isSaved: true
+          },
+          reading_time: 6
         }
+      ];
 
-        setHasMore(response.pagination.has_more)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch articles")
-      } finally {
-        setIsLoading(false)
-      }
-    },
-    [filters, page],
-  )
+      const mockResponse = {
+        data: mockArticles,
+        pagination: {
+          current_page: filters.page || 1,
+          per_page: filters.limit || 10,
+          total: mockArticles.length,
+          total_pages: 1,
+          has_more: false
+        } as ArticlePaginationData
+      };
 
-  useEffect(() => {
-    setPage(1)
-    fetchArticles(true)
-  }, [filters])
-
-  const loadMore = useCallback(() => {
-    if (!isLoading && hasMore) {
-      fetchArticles()
+      setArticles(mockResponse.data);
+      setPagination(mockResponse.pagination);
+      setCurrentFilters(filters);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch articles');
+    } finally {
+      setIsLoading(false);
     }
-  }, [isLoading, hasMore, fetchArticles])
+  }, [currentFilters]);
 
-  const toggleLike = useCallback(
-    async (content_id: number) => {
-      if (!user || user.role_id === 0) return
+  const refetch = useCallback(() => {
+    fetchArticles(currentFilters);
+  }, [fetchArticles, currentFilters]);
 
-      try {
-        const result = await articleService.toggleLike(content_id)
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
 
-        setArticles((prev) =>
-          prev.map((article) =>
-            article.content_id === content_id
-              ? {
-                  ...article,
-                  interactions: {
-                    ...article.interactions,
-                    likes: result.like_count,
-                  },
-                  userInteractions: {
-                    ...article.userInteractions,
-                    isLiked: result.liked,
-                    isSaved: article.userInteractions?.isSaved || false,
-                  },
-                }
-              : article,
-          ),
-        )
-
-        return result
-      } catch (err) {
-        console.error("Failed to toggle like:", err)
-        throw err
-      }
-    },
-    [user],
-  )
-
-  const toggleSave = useCallback(
-    async (article_id: number) => {
-      if (!user || user.role_id !== ROLE_PARENT) return
-
-      try {
-        const result = await articleService.toggleSave(article_id)
-
-        setArticles((prev) =>
-          prev.map((article) =>
-            article.article_id === article_id
-              ? {
-                  ...article,
-                  userInteractions: {
-                    ...article.userInteractions,
-                    isSaved: result.saved,
-                    isLiked: article.userInteractions?.isLiked || false,
-                  },
-                }
-              : article,
-          ),
-        )
-
-        return result
-      } catch (err) {
-        console.error("Failed to toggle save:", err)
-        throw err
-      }
-    },
-    [user],
-  )
+  // Initial fetch
+  useEffect(() => {
+    fetchArticles(initialFilters);
+  }, [fetchArticles, initialFilters]);
 
   return {
     articles,
-    isLoading,
+    loading: isLoading, // Provide both for compatibility
+    isLoading, // Also provide isLoading
     error,
-    hasMore,
-    loadMore,
-    toggleLike,
-    toggleSave,
-    refetch: () => fetchArticles(true),
-  }
-}
-
-export const useArticleDetail = (article_id: number) => {
-  const [article, setArticle] = useState<Article | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const fetchArticle = async () => {
-      if (!article_id) return
-
-      setIsLoading(true)
-      setError(null)
-
-      try {
-        const data = await articleService.getArticleDetail(article_id)
-        setArticle(data)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch article")
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchArticle()
-  }, [article_id])
-
-  const updateArticle = useCallback(
-    (updatedData: Partial<Article>) => {
-      if (article) {
-        setArticle({ ...article, ...updatedData })
-      }
-    },
-    [article],
-  )
-
-  return { article, isLoading, error, updateArticle }
-}
-
-// Hook for doctor's articles
-export const useDoctorArticles = () => {
-  const { user } = useAuth()
-  const [articles, setArticles] = useState<Article[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const fetchMyArticles = async () => {
-      if (!user || user.role_id !== ROLE_DOCTOR) return
-
-      setIsLoading(true)
-      setError(null)
-
-      try {
-        const data = await articleService.getMyArticles()
-        setArticles(data)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch articles")
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchMyArticles()
-  }, [user])
-
-  const addArticle = useCallback((newArticle: Article) => {
-    setArticles((prev) => [newArticle, ...prev])
-  }, [])
-
-  const updateArticle = useCallback((article_id: number, updatedData: Partial<Article>) => {
-    setArticles((prev) =>
-      prev.map((article) => (article.article_id === article_id ? { ...article, ...updatedData } : article)),
-    )
-  }, [])
-
-  const removeArticle = useCallback((article_id: number) => {
-    setArticles((prev) => prev.filter((article) => article.article_id !== article_id))
-  }, [])
-
-  return {
-    articles,
-    isLoading,
-    error,
-    addArticle,
-    updateArticle,
-    removeArticle,
-  }
-}
-
-// Hook for parent's saved articles
-export const useSavedArticles = () => {
-  const { user } = useAuth()
-  const [articles, setArticles] = useState<Article[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const fetchSavedArticles = async () => {
-      if (!user || user.role_id !== ROLE_PARENT) return
-
-      setIsLoading(true)
-      setError(null)
-
-      try {
-        const data = await articleService.getSavedArticles()
-        setArticles(data)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch saved articles")
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchSavedArticles()
-  }, [user])
-
-  const removeSavedArticle = useCallback((article_id: number) => {
-    setArticles((prev) => prev.filter((article) => article.article_id !== article_id))
-  }, [])
-
-  return { articles, isLoading, error, removeSavedArticle }
-}
+    pagination,
+    fetchArticles,
+    refetch,
+    clearError
+  };
+};
