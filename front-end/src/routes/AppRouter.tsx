@@ -11,7 +11,7 @@ import HomePage from "../pages/public/HompPage"
 // Articles pages
 import ArticlesListPage from "../pages/articles/ArticlesListPage"
 import CreateArticlePage from "../pages/articles/CreateArticlePage"
-// import ArticleDetailPage from "../pages/articles/ArticleDetailPage" // Uncomment when ready
+import ArticleDetailPage from "../pages/articles/ArticleDetailPage" // ✅ UNCOMMENT: Import ArticleDetailPage
 // import EditArticlePage from "../pages/articles/EditArticlePage" // Uncomment when ready
 
 const AppRouter: React.FC = () => {
@@ -31,8 +31,10 @@ const AppRouter: React.FC = () => {
             <Route path="/articles" element={<ArticlesListPage />} />
             <Route path="/articles/create" element={<CreateArticlePage />} />
 
+            {/* ✅ UNCOMMENT: Article detail route */}
+            <Route path="/articles/:id" element={<ArticleDetailPage />} />
+
             {/* Future article routes - uncomment when pages are ready */}
-            {/* <Route path="/articles/:id" element={<ArticleDetailPage />} /> */}
             {/* <Route path="/articles/:id/edit" element={<EditArticlePage />} /> */}
           </Route>
         </Routes>

@@ -1,4 +1,4 @@
-# app/routers/image_router.py - PRODUCTION READY VERSION
+# app/routers/image_router.py - COMPLETE WITH PROXY
 import logging
 from flask import Blueprint, request, jsonify, Response
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -14,17 +14,19 @@ bp = Blueprint('images', __name__)
 
 def allowed_file(filename):
     """Check if file extension is allowed"""
-    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'}
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'tiff', 'svg'}
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-# ✅ CORS preflight handler
+# CORS preflight handler
 @bp.route('/upload', methods=['OPTIONS'])
 @bp.route('/delete', methods=['OPTIONS'])
 @bp.route('/list', methods=['OPTIONS'])
 @bp.route('/health', methods=['OPTIONS'])
 @bp.route('/proxy/<path:file_path>', methods=['OPTIONS'])
-def images_options():
+@bp.route('/avatar/upload/<int:user_id>', methods=['OPTIONS'])
+@bp.route('/article/upload/<int:article_id>', methods=['OPTIONS'])
+def images_options(**kwargs):
     """Handle CORS preflight requests for images endpoints"""
     response = jsonify({})
     response.headers.add('Access-Control-Allow-Origin', 'http://localhost:3000')
@@ -37,18 +39,12 @@ def images_options():
 @bp.route('/upload', methods=['POST'])
 @jwt_required()
 def upload_image():
-    """Upload image to MinIO and return URL for frontend"""
+    """Upload image to MinIO and return URL"""
     logger.info('=== IMAGE UPLOAD START ===')
 
     try:
         current_user_id = get_jwt_identity()
         logger.info(f'🔍 Upload request from user_id: {current_user_id}')
-
-        # Log request details for debugging
-        logger.info(f'📋 Request method: {request.method}')
-        logger.info(f'📋 Request content type: {request.content_type}')
-        logger.info(f'📋 Request form keys: {list(request.form.keys())}')
-        logger.info(f'📋 Request files keys: {list(request.files.keys())}')
 
         # Check if file is in request
         if 'file' not in request.files:
@@ -78,7 +74,7 @@ def upload_image():
             logger.error(f'❌ Invalid file type: {file.filename}')
             return jsonify({
                 'success': False,
-                'error': 'Only image files are allowed (PNG, JPG, JPEG, GIF, WEBP, BMP)'
+                'error': 'Only image files are allowed (PNG, JPG, JPEG, GIF, WEBP, BMP, TIFF, SVG)'
             }), 400
 
         # Get optional parameters
@@ -87,7 +83,7 @@ def upload_image():
 
         logger.info(f'📋 Upload params: file={file.filename}, bucket_type={bucket_type}, folder={folder}')
 
-        # Try to use MinIO service
+        # Use MinIO service
         try:
             from app.services.minio_service import minio_service
             result = minio_service.upload_file(file, bucket_type, folder)
@@ -101,7 +97,8 @@ def upload_image():
                     'bucket': result.get('bucket', bucket_type),
                     'object_name': result.get('object_name'),
                     'original_filename': result.get('original_filename'),
-                    'file_size': result.get('file_size', 0)
+                    'file_size': result.get('file_size', 0),
+                    'content_type': result.get('content_type')
                 }), 200
             else:
                 logger.error(f'❌ MinIO upload failed: {result.get("error")}')
@@ -112,28 +109,10 @@ def upload_image():
 
         except Exception as minio_error:
             logger.error(f'❌ MinIO service error: {minio_error}')
-
-            # Fallback to mock response for development/testing
-            filename = secure_filename(file.filename)
-            file_extension = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'jpg'
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            unique_id = str(uuid.uuid4())[:8]
-            mock_filename = f"{timestamp}_{unique_id}.{file_extension}"
-
-            # Create mock URL that follows MinIO pattern
-            mock_file_url = f"http://localhost:9000/{bucket_type}-images/{folder}/{mock_filename}"
-
-            logger.warning('⚠️ Using mock upload response (MinIO not available)')
             return jsonify({
-                'success': True,
-                'message': 'Upload successful (Mock - MinIO service unavailable)',
-                'file_url': mock_file_url,
-                'bucket': f"{bucket_type}-images",
-                'object_name': f"{folder}/{mock_filename}",
-                'original_filename': filename,
-                'file_size': len(file.read()) if file else 0,
-                'note': 'Mock response - MinIO service unavailable'
-            }), 200
+                'success': False,
+                'error': f'MinIO service error: {str(minio_error)}'
+            }), 500
 
     except Exception as e:
         logger.error(f'❌ Upload exception: {str(e)}', exc_info=True)
@@ -165,7 +144,7 @@ def delete_image():
         file_url = data['file_url']
         logger.info(f'🗑️ Deleting file: {file_url}')
 
-        # Try to use MinIO service
+        # Use MinIO service
         try:
             from app.services.minio_service import minio_service
             result = minio_service.delete_file_by_url(file_url)
@@ -185,13 +164,10 @@ def delete_image():
 
         except Exception as minio_error:
             logger.error(f'❌ MinIO delete error: {minio_error}')
-
-            # Mock success for development
-            logger.warning('⚠️ Using mock delete response (MinIO not available)')
             return jsonify({
-                'success': True,
-                'message': 'File deleted successfully (Mock)'
-            }), 200
+                'success': False,
+                'error': f'MinIO service error: {str(minio_error)}'
+            }), 500
 
     except Exception as e:
         logger.error(f'❌ Delete exception: {str(e)}', exc_info=True)
@@ -214,7 +190,7 @@ def list_images():
 
         logger.info(f'📋 List params: bucket_type={bucket_type}, prefix={prefix}')
 
-        # Try to use MinIO service
+        # Use MinIO service
         try:
             from app.services.minio_service import minio_service
             files = minio_service.list_files(bucket_type, prefix)
@@ -228,23 +204,10 @@ def list_images():
 
         except Exception as minio_error:
             logger.error(f'❌ MinIO list error: {minio_error}')
-
-            # Mock response for development
-            mock_files = [
-                {
-                    'name': 'sample1.jpg',
-                    'size': 1024,
-                    'last_modified': '2025-06-23T12:00:00Z',
-                    'url': 'http://localhost:9000/article-images/sample1.jpg'
-                }
-            ]
-
             return jsonify({
-                'success': True,
-                'files': mock_files,
-                'count': len(mock_files),
-                'note': 'Mock response - MinIO service not available'
-            }), 200
+                'success': False,
+                'error': f'MinIO service error: {str(minio_error)}'
+            }), 500
 
     except Exception as e:
         logger.error(f'❌ List exception: {str(e)}', exc_info=True)
@@ -254,43 +217,7 @@ def list_images():
         }), 500
 
 
-@bp.route('/health', methods=['GET'])
-def images_health():
-    """Health check for images service"""
-    try:
-        # Test MinIO connection if possible
-        minio_status = 'unknown'
-        try:
-            from app.services.minio_service import minio_service
-            health_check = minio_service.health_check()
-            minio_status = health_check.get('status', 'unknown')
-        except Exception as e:
-            minio_status = f'error: {str(e)}'
-
-        return jsonify({
-            "success": True,
-            "service": "images",
-            "status": "healthy",
-            "minio_status": minio_status,
-            "endpoints": {
-                "upload": "/api/images/upload",
-                "delete": "/api/images/delete",
-                "list": "/api/images/list",
-                "health": "/api/images/health",
-                "proxy": "/api/images/proxy/<path>"
-            }
-        }), 200
-    except Exception as e:
-        logger.error('Images health check failed: %s', str(e))
-        return jsonify({
-            "success": False,
-            "service": "images",
-            "status": "unhealthy",
-            "error": str(e)
-        }), 500
-
-
-# ✅ Image proxy to serve images from MinIO (solves CORS issues)
+# IMAGE PROXY - SOLVES CORS ISSUES
 @bp.route('/proxy/<path:file_path>')
 def proxy_image(file_path):
     """Proxy to serve images from MinIO (solves CORS issues)"""
@@ -305,7 +232,7 @@ def proxy_image(file_path):
             elif 'minio:9000/' in file_path:
                 file_path = file_path.split('minio:9000/', 1)[1]
 
-        # Try internal MinIO endpoint first
+        # Try internal MinIO endpoint first (for Docker)
         minio_internal_url = f"http://minio:9000/{file_path}"
         logger.info(f'📡 Fetching from MinIO (internal): {minio_internal_url}')
 
@@ -364,7 +291,49 @@ def proxy_image(file_path):
         }), 500
 
 
-# ✅ Specialized endpoints for different image types
+@bp.route('/health', methods=['GET'])
+def images_health():
+    """Health check for images service"""
+    try:
+        # Test MinIO connection if possible
+        minio_status = 'unknown'
+        minio_details = {}
+
+        try:
+            from app.services.minio_service import minio_service
+            health_check = minio_service.health_check()
+            minio_status = health_check.get('status', 'unknown')
+            minio_details = health_check
+        except Exception as e:
+            minio_status = f'error: {str(e)}'
+
+        return jsonify({
+            "success": True,
+            "service": "images",
+            "status": "healthy",
+            "minio_status": minio_status,
+            "minio_details": minio_details,
+            "endpoints": {
+                "upload": "POST /api/images/upload",
+                "delete": "DELETE /api/images/delete",
+                "list": "GET /api/images/list",
+                "health": "GET /api/images/health",
+                "proxy": "GET /api/images/proxy/<path>",
+                "avatar_upload": "POST /api/images/avatar/upload/<user_id>",
+                "article_upload": "POST /api/images/article/upload/<article_id>"
+            }
+        }), 200
+    except Exception as e:
+        logger.error('Images health check failed: %s', str(e))
+        return jsonify({
+            "success": False,
+            "service": "images",
+            "status": "unhealthy",
+            "error": str(e)
+        }), 500
+
+
+# SPECIALIZED ENDPOINTS
 
 @bp.route('/avatar/upload/<int:user_id>', methods=['POST'])
 @jwt_required()
@@ -420,19 +389,11 @@ def upload_avatar(user_id):
                 }), 500
 
         except Exception as minio_error:
-            # Mock response for development
-            filename = secure_filename(file.filename)
-            file_extension = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'jpg'
-            avatar_url = f"http://localhost:9000/user-avatars/user_{user_id}/avatar.{file_extension}"
-
-            logger.warning(f'⚠️ Avatar upload mock response for user {user_id}')
-
+            logger.error(f'❌ Avatar upload error: {minio_error}')
             return jsonify({
-                'success': True,
-                'message': 'Avatar uploaded successfully (Mock)',
-                'avatar_url': avatar_url,
-                'user_id': user_id
-            }), 200
+                'success': False,
+                'error': f'Upload service error: {str(minio_error)}'
+            }), 500
 
     except Exception as e:
         logger.error(f'❌ Avatar upload exception: {str(e)}', exc_info=True)
@@ -467,10 +428,14 @@ def upload_article_image(article_id):
 
         try:
             from app.services.minio_service import minio_service
+
+            # Use appropriate folder based on image type
+            folder = 'featured' if image_type == 'featured' else f'article_{article_id}'
+
             result = minio_service.upload_file(
                 file=file,
                 bucket_type='articles',
-                folder=f'article_{article_id}'
+                folder=folder
             )
 
             if result['success']:
@@ -491,21 +456,11 @@ def upload_article_image(article_id):
                 }), 500
 
         except Exception as minio_error:
-            # Mock response for development
-            filename = secure_filename(file.filename)
-            file_extension = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'jpg'
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            image_url = f"http://localhost:9000/article-images/article_{article_id}/{timestamp}.{file_extension}"
-
-            logger.warning(f'⚠️ Article image upload mock response for article {article_id}')
-
+            logger.error(f'❌ Article image upload error: {minio_error}')
             return jsonify({
-                'success': True,
-                'message': 'Article image uploaded successfully (Mock)',
-                'image_url': image_url,
-                'article_id': article_id,
-                'image_type': image_type
-            }), 200
+                'success': False,
+                'error': f'Upload service error: {str(minio_error)}'
+            }), 500
 
     except Exception as e:
         logger.error(f'❌ Article image upload exception: {str(e)}', exc_info=True)

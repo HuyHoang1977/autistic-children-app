@@ -41,18 +41,28 @@ def get_user_id_from_jwt():
         return None
 
 
-# ✅ CORS preflight handler
-@bp.route('', methods=['OPTIONS'])
-@bp.route('/', methods=['OPTIONS'])
-@bp.route('/<int:article_id>', methods=['OPTIONS'])
-def articles_options():
-    """Handle CORS preflight requests"""
+# ✅ FIXED CORS preflight handlers
+def cors_preflight_response():
+    """Common CORS preflight response"""
     response = jsonify({})
     response.headers.add('Access-Control-Allow-Origin', 'http://localhost:3000')
     response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
     response.headers.add('Access-Control-Allow-Credentials', 'true')
     return response, 200
+
+
+@bp.route('', methods=['OPTIONS'])
+@bp.route('/', methods=['OPTIONS'])
+def articles_list_options():
+    """Handle CORS preflight requests for articles list"""
+    return cors_preflight_response()
+
+
+@bp.route('/<int:article_id>', methods=['OPTIONS'])
+def article_detail_options(article_id):
+    """Handle CORS preflight requests for article detail"""
+    return cors_preflight_response()
 
 
 def create_category_relationship(article_id, category_name):
@@ -469,10 +479,13 @@ def get_article_detail(article_id):
                 'error_code': 'INVALID_USER_IDENTITY'
             }), 422
 
+        logger.info(f'🔍 Getting article detail: {article_id} for user: {current_user_id}')
+
         # Get article
         article = db.session.query(Article).filter_by(article_id=article_id).first()
 
         if not article:
+            logger.warning(f'❌ Article not found: {article_id}')
             return jsonify({
                 'success': False,
                 'error': 'Article not found',
@@ -491,6 +504,8 @@ def get_article_detail(article_id):
 
         # Get full article data
         article_data = article.to_dict(include_content=True)
+
+        logger.info(f'✅ Article detail loaded successfully: {article_id}')
 
         return jsonify({
             'success': True,
@@ -682,6 +697,48 @@ def delete_article(article_id):
         }), 500
 
 
+# ✅ Debug endpoint (for development)
+@bp.route('/debug/<int:article_id>', methods=['GET'])
+def debug_article_detail(article_id):
+    """Debug endpoint to test article detail without auth"""
+    try:
+        logger.info(f'🔍 Debug: Getting article {article_id}')
+
+        # Test database connection
+        article = db.session.query(Article).filter_by(article_id=article_id).first()
+
+        if not article:
+            return jsonify({
+                'success': False,
+                'error': 'Article not found',
+                'debug_info': {
+                    'article_id': article_id,
+                    'total_articles': db.session.query(Article).count()
+                }
+            }), 404
+
+        # Test serialization
+        article_data = article.to_dict(include_content=True)
+
+        return jsonify({
+            'success': True,
+            'debug': True,
+            'data': article_data,
+            'message': 'Debug endpoint - no auth required'
+        }), 200
+
+    except Exception as e:
+        logger.error(f'❌ Debug error: {str(e)}', exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': f'Debug error: {str(e)}',
+            'debug_info': {
+                'article_id': article_id,
+                'error_type': type(e).__name__
+            }
+        }), 500
+
+
 # ✅ Health check endpoint
 @bp.route('/health', methods=['GET'])
 def articles_health():
@@ -695,7 +752,16 @@ def articles_health():
             'service': 'articles',
             'status': 'healthy',
             'database': 'connected',
-            'total_articles': article_count
+            'total_articles': article_count,
+            'endpoints': {
+                'list': 'GET /api/articles',
+                'create': 'POST /api/articles',
+                'detail': 'GET /api/articles/{id}',
+                'update': 'PUT /api/articles/{id}',
+                'delete': 'DELETE /api/articles/{id}',
+                'debug': 'GET /api/articles/debug/{id}',
+                'health': 'GET /api/articles/health'
+            }
         }), 200
     except Exception as e:
         logger.error(f'Articles health check failed: {str(e)}')
