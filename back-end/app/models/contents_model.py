@@ -8,7 +8,7 @@ class Content(db.Model):
     content_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     author_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
     title = db.Column(db.String(255), nullable=False)
-    content_type = db.Column(db.Integer, nullable=False)  # 1: article, 2: video, 3: tip
+    content_type = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     view_count = db.Column(db.Integer, default=0)
@@ -17,9 +17,10 @@ class Content(db.Model):
 
     # Relationships
     author = db.relationship('User', backref=db.backref('contents', lazy=True))
-    # ✅ FIXED: Updated to match the renamed relationship in Article model
-    articles = db.relationship('Article', back_populates='content_obj', cascade='all, delete-orphan')
-    comments = db.relationship('Comment', back_populates='content', cascade='all, delete-orphan')
+    articles = db.relationship('Article', backref='content_source', lazy='select')
+
+    # ✅ FIX: Comments relationship sẽ được tạo tự động bởi Comment model
+    # Không cần định nghĩa ở đây vì Comment model đã có backref='content_comments'
 
     def to_dict(self):
         return {

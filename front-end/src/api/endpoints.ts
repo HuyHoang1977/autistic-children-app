@@ -1,4 +1,4 @@
-// endpoints.ts - Updated with new endpoints
+// endpoints.ts - Updated with FIXED comment endpoints
 export const API_ENDPOINTS = {
   // Auth endpoints
   AUTH: {
@@ -7,6 +7,8 @@ export const API_ENDPOINTS = {
     SPECIALIZATIONS: "/auth/specializations",
     LOGOUT: "/auth/logout",
     REFRESH: "/auth/refresh",
+    ME: "/auth/me",
+    USERS: "/auth/users",
   },
 
   USERS: {
@@ -32,58 +34,80 @@ export const API_ENDPOINTS = {
     FOLLOWED_DOCTORS: "/articles/followed-doctors",
     TRENDING: "/articles/trending",
     FEATURED: "/articles/featured",
+    HEALTH: "/articles/health",
+  },
+
+  // ✅ FIXED: Comments endpoints - URL đúng cho backend
+  COMMENTS: {
+    LIST: "/v1/comments",
+    CREATE: "/v1/comments",
+    UPDATE: (comment_id: number) => `/v1/comments/${comment_id}`,
+    DELETE: (comment_id: number) => `/v1/comments/${comment_id}`,
+    LIKE: (comment_id: number) => `/v1/comments/${comment_id}/like`,
+    REPORT: (comment_id: number) => `/v1/comments/${comment_id}/report`,
+    MY_COMMENTS: "/v1/comments/my-comments",
+    HEALTH: "/v1/comments/health",
   },
 
   // Upload endpoints
   UPLOADS: {
-    PRESIGNED_URL: "/api/v1/uploads/presigned-url",
-    CONFIRM: "/api/v1/uploads/confirm",
-    DELETE: (image_id: string) => `/api/v1/uploads/${image_id}`,
-    LIST: "/api/v1/uploads",
+    PRESIGNED_URL: "/v1/uploads/presigned-url",
+    CONFIRM: "/v1/uploads/confirm",
+    DELETE: (image_id: string) => `/v1/uploads/${image_id}`,
+    LIST: "/v1/uploads",
   },
 
-  // Comments endpoints
-  COMMENTS: {
-    LIST: "/api/v1/comments",
-    CREATE: "/api/v1/comments",
-    UPDATE: (comment_id: number) => `/api/v1/comments/${comment_id}`,
-    DELETE: (comment_id: number) => `/api/v1/comments/${comment_id}`,
-    LIKE: (comment_id: number) => `/api/v1/comments/${comment_id}/like`,
-    REPORT: (comment_id: number) => `/api/v1/comments/${comment_id}/report`,
-    MY_COMMENTS: "/api/v1/comments/my-comments",
-    USER_COMMENTS: "/api/v1/comments/user-comments",
+  // Images endpoints
+  IMAGES: {
+    UPLOAD: "/images/upload",
+    DELETE: "/images/delete",
+    LIST: "/images/list",
+    HEALTH: "/images/health",
+    PROXY: (file_path: string) => `/images/proxy/${file_path}`,
+    AVATAR_UPLOAD: (user_id: number) => `/images/avatar/upload/${user_id}`,
+    ARTICLE_UPLOAD: (article_id: number) => `/images/article/upload/${article_id}`,
   },
 
   // Categories endpoints
   CATEGORIES: {
-    LIST: "/api/v1/categories",
-    DETAIL: (category_id: number) => `/api/v1/categories/${category_id}`,
-    CREATE: "/api/v1/categories",
-    UPDATE: (category_id: number) => `/api/v1/categories/${category_id}`,
-    DELETE: (category_id: number) => `/api/v1/categories/${category_id}`,
+    LIST: "/v1/categories",
+    DETAIL: (category_id: number) => `/v1/categories/${category_id}`,
+    CREATE: "/v1/categories",
+    UPDATE: (category_id: number) => `/v1/categories/${category_id}`,
+    DELETE: (category_id: number) => `/v1/categories/${category_id}`,
   },
 
   // Tags endpoints
   TAGS: {
-    LIST: "/api/v1/tags",
-    POPULAR: "/api/v1/tags/popular",
-    SEARCH: "/api/v1/tags/search",
+    LIST: "/v1/tags",
+    POPULAR: "/v1/tags/popular",
+    SEARCH: "/v1/tags/search",
   },
 
   // Doctors endpoints
   DOCTORS: {
-    LIST: "/api/v1/doctors",
-    DETAIL: (doctor_id: number) => `/api/v1/doctors/${doctor_id}`,
-    FOLLOW: (doctor_id: number) => `/api/v1/doctors/${doctor_id}/follow`,
-    FOLLOWERS: (doctor_id: number) => `/api/v1/doctors/${doctor_id}/followers`,
-    ARTICLES: (doctor_id: number) => `/api/v1/doctors/${doctor_id}/articles`,
+    LIST: "/v1/doctors",
+    DETAIL: (doctor_id: number) => `/v1/doctors/${doctor_id}`,
+    FOLLOW: (doctor_id: number) => `/v1/doctors/${doctor_id}/follow`,
+    FOLLOWERS: (doctor_id: number) => `/v1/doctors/${doctor_id}/followers`,
+    ARTICLES: (doctor_id: number) => `/v1/doctors/${doctor_id}/articles`,
   },
 
   // Notifications endpoints
   NOTIFICATIONS: {
-    LIST: "/api/v1/notifications",
-    MARK_READ: (notification_id: number) => `/api/v1/notifications/${notification_id}/read`,
-    MARK_ALL_READ: "/api/v1/notifications/mark-all-read",
-    DELETE: (notification_id: number) => `/api/v1/notifications/${notification_id}`,
+    LIST: "/v1/notifications",
+    MARK_READ: (notification_id: number) => `/v1/notifications/${notification_id}/read`,
+    MARK_ALL_READ: "/v1/notifications/mark-all-read",
+    DELETE: (notification_id: number) => `/v1/notifications/${notification_id}`,
+  },
+
+  // System endpoints
+  SYSTEM: {
+    HEALTH: "/health",
+    API_HEALTH: "/api/health",
+    DEBUG_ROUTES: "/debug/routes",
+    TEST_IMAGES: "/test/images",
+    TEST_COMMENTS: "/test/comments",
+    TEST_UPLOAD: "/api/test-upload",
   },
 } as const;

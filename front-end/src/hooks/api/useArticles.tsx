@@ -1,8 +1,10 @@
+// src/hooks/api/useArticles.ts - FIXED VERSION
 import { useState, useEffect, useCallback } from 'react';
+import { articleService } from '../../api/services/article.sevice';
 import type { Article, ArticleFilters, ArticlePaginationData } from '../../types/content.types';
 
-// Return type for useArticles hook - matching the usage in both ArticlesList and ArticlesListPage
-export interface UseArticlesReturn {
+// ✅ FIXED: Match exact interface from your existing useArticles
+interface UseArticlesReturn {
   articles: Article[];
   loading: boolean; // Keep as 'loading' for ArticlesList compatibility
   isLoading: boolean; // Also provide 'isLoading' for ArticlesListPage compatibility
@@ -13,9 +15,6 @@ export interface UseArticlesReturn {
   clearError: () => void;
 }
 
-/**
- * Hook for managing articles data fetching and state
- */
 export const useArticles = (initialFilters: ArticleFilters = { limit: 10, page: 1 }): UseArticlesReturn => {
   const [articles, setArticles] = useState<Article[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -23,138 +22,86 @@ export const useArticles = (initialFilters: ArticleFilters = { limit: 10, page: 
   const [pagination, setPagination] = useState<ArticlePaginationData | null>(null);
   const [currentFilters, setCurrentFilters] = useState<ArticleFilters>(initialFilters);
 
-  // Mock fetch function - replace with actual API call
+  // ✅ REAL API CALL - Replace mock with actual service
   const fetchArticles = useCallback(async (filters: ArticleFilters = currentFilters) => {
     try {
       setIsLoading(true);
       setError(null);
 
-      // TODO: Replace with actual API service call
-      // const response = await articleService.getArticles(filters);
+      console.log('🔍 useArticles: Fetching REAL data with filters:', filters);
 
-      // Mock response for now
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // ✅ CALL REAL API SERVICE
+      const response = await articleService.getArticles(filters);
 
-      // Mock articles data
-      const mockArticles: Article[] = [
-        {
-          article_id: 1,
-          title: "Chăm sóc sức khỏe trẻ em trong mùa đông",
-          content: "Nội dung bài viết...",
-          excerpt: "Hướng dẫn chăm sóc sức khỏe trẻ em hiệu quả trong mùa đông lạnh",
-          category: "Sức khỏe trẻ em",
-          featured_image: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1f?w=400&h=200&fit=crop",
-          created_at: new Date().toISOString(),
-          author: {
-            id: 1,
-            user_id: 1,
-            username: "dr_nguyen",
-            full_name: "BS. Nguyễn Văn A",
-            verified: true
-          },
-          interactions: {
-            likes: 45,
-            views: 1200,
-            comments_count: 8
-          },
-          userInteractions: {
-            isLiked: false,
-            isSaved: false
-          },
-          reading_time: 5
-        },
-        {
-          article_id: 2,
-          title: "Dinh dưỡng cho trẻ phát triển toàn diện",
-          content: "Nội dung bài viết...",
-          excerpt: "Những nguyên tắc dinh dưỡng cơ bản giúp trẻ phát triển khỏe mạnh",
-          category: "Dinh dưỡng",
-          featured_image: "https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=400&h=200&fit=crop",
-          created_at: new Date(Date.now() - 86400000).toISOString(),
-          author: {
-            id: 2,
-            user_id: 2,
-            username: "dr_tran",
-            full_name: "BS. Trần Thị B",
-            verified: true
-          },
-          interactions: {
-            likes: 32,
-            views: 980,
-            comments_count: 12
-          },
-          userInteractions: {
-            isLiked: true,
-            isSaved: false
-          },
-          reading_time: 7
-        },
-        {
-          article_id: 3,
-          title: "Phát triển tâm lý trẻ em qua các giai đoạn",
-          content: "Nội dung bài viết...",
-          excerpt: "Hiểu rõ các giai đoạn phát triển tâm lý để hỗ trợ trẻ tốt nhất",
-          category: "Phát triển tâm lý",
-          featured_image: "https://images.unsplash.com/photo-1544027993-37dbfe43562a?w=400&h=200&fit=crop",
-          created_at: new Date(Date.now() - 172800000).toISOString(),
-          author: {
-            id: 3,
-            user_id: 3,
-            username: "dr_pham",
-            full_name: "BS. Phạm Văn C",
-            verified: true
-          },
-          interactions: {
-            likes: 28,
-            views: 750,
-            comments_count: 5
-          },
-          userInteractions: {
-            isLiked: false,
-            isSaved: true
-          },
-          reading_time: 6
+      console.log('✅ useArticles: Real API response:', {
+        success: response.success,
+        dataLength: response.data?.length,
+        pagination: response.pagination
+      });
+
+      if (response.success && response.data) {
+        // ✅ Handle pagination mode
+        if (filters.page && filters.page > 1) {
+          // Load more mode - append to existing articles
+          setArticles(prev => [...prev, ...response.data]);
+        } else {
+          // Fresh load mode - replace articles
+          setArticles(response.data);
         }
-      ];
 
-      const mockResponse = {
-        data: mockArticles,
-        pagination: {
-          current_page: filters.page || 1,
-          per_page: filters.limit || 10,
-          total: mockArticles.length,
-          total_pages: 1,
-          has_more: false
-        } as ArticlePaginationData
-      };
+        setPagination(response.pagination || null);
+        setCurrentFilters(filters);
+      } else {
+        throw new Error(response.error || 'Failed to fetch articles');
+      }
 
-      setArticles(mockResponse.data);
-      setPagination(mockResponse.pagination);
-      setCurrentFilters(filters);
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch articles');
+      console.error('❌ useArticles: Real API error:', err);
+
+      // ✅ Better error handling
+      let errorMessage = 'Không thể tải bài viết';
+
+      if (err.message?.includes('401') || err.message?.includes('Unauthorized')) {
+        errorMessage = 'Vui lòng đăng nhập để xem bài viết';
+      } else if (err.message?.includes('Network')) {
+        errorMessage = 'Không thể kết nối đến server';
+      } else if (err.message?.includes('Invalid user identity')) {
+        errorMessage = 'Phiên đăng nhập không hợp lệ';
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
+      setError(errorMessage);
+
+      // ✅ Don't clear articles on error unless it's the first load
+      if (!filters.page || filters.page === 1) {
+        setArticles([]);
+      }
     } finally {
       setIsLoading(false);
     }
   }, [currentFilters]);
 
+  // ✅ Refetch current filters
   const refetch = useCallback(() => {
     fetchArticles(currentFilters);
   }, [fetchArticles, currentFilters]);
 
+  // ✅ Clear error
   const clearError = useCallback(() => {
     setError(null);
   }, []);
 
-  // Initial fetch
+  // ✅ Initial load - only run once on mount
   useEffect(() => {
+    console.log('🔄 useArticles: Initial load with filters:', initialFilters);
     fetchArticles(initialFilters);
-  }, [fetchArticles, initialFilters]);
+  }, []); // Empty dependency array - only run once
 
   return {
     articles,
     loading: isLoading, // Provide both for compatibility
-    isLoading, // Also provide isLoading
+    isLoading, // Also provide isLoading for ArticlesListPage
     error,
     pagination,
     fetchArticles,

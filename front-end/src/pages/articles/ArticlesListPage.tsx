@@ -1,3 +1,4 @@
+// src/pages/articles/ArticlesListPage.tsx - UPDATED với API thật
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../../components/ui/button";
@@ -6,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Separator } from "../../components/ui/separator";
+import { Alert, AlertDescription } from "../../components/ui/alert";
 import {
   Search,
   Grid,
@@ -17,17 +19,19 @@ import {
   Plus,
   Loader2,
   SlidersHorizontal,
-  MessageCircle
+  MessageCircle,
+  AlertTriangle,
+  RefreshCw,
+  Wifi,
+  WifiOff
 } from "lucide-react";
 import { useArticles } from "../../hooks/api/useArticles";
+import { useArticlesDebug } from "../../hooks/api/useArticlesDebug";
 import { useAuth } from "../../hooks/auth/useAuth";
 import { toast } from "sonner";
 import type { ArticleFilters, Article } from "../../types/content.types";
 
-// =====================================================
-// SIMPLE ARTICLE CARD COMPONENT
-// =====================================================
-
+// ✅ Enhanced Article Card Component cho Articles List
 interface SimpleArticleCardProps {
   article: Article;
   variant?: 'default' | 'list';
@@ -59,121 +63,135 @@ const SimpleArticleCard: React.FC<SimpleArticleCardProps> = ({
     onShare?.(article.article_id);
   };
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('vi-VN');
+  };
+
   return (
-    <Card className={`${isListView ? 'flex flex-row' : ''} hover:shadow-lg transition-shadow cursor-pointer`}>
-      {/* Featured Image (if available) */}
-      {article.featured_image && (
-        <div className={`${isListView ? 'w-48 flex-shrink-0' : 'w-full h-48'} bg-gray-200 rounded-t-lg overflow-hidden`}>
-          <img
-            src={article.featured_image}
-            alt={article.title}
-            className="w-full h-full object-cover"
-          />
-        </div>
-      )}
+    <Link to={`/articles/${article.article_id}`}>
+      <Card className={`${isListView ? 'flex flex-row' : ''} hover:shadow-lg transition-shadow cursor-pointer group`}>
+        {/* Featured Image */}
+        {article.featured_image && (
+          <div className={`${isListView ? 'w-48 flex-shrink-0' : 'w-full h-48'} bg-gray-200 rounded-t-lg overflow-hidden`}>
+            <img
+              src={article.featured_image}
+              alt={article.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+            />
+          </div>
+        )}
 
-      <div className={`${isListView ? 'flex-1' : ''}`}>
-        <CardContent className="p-6">
-          <div className="space-y-4">
-            {/* Category Badge */}
-            {article.category && (
-              <Badge variant="secondary" className="text-xs">
-                {article.category}
-              </Badge>
-            )}
-
-            {/* Title and Excerpt */}
-            <div>
-              <h3 className={`font-semibold line-clamp-2 ${isListView ? 'text-xl' : 'text-lg'}`}>
-                {article.title}
-              </h3>
-              {article.excerpt && (
-                <p className="text-gray-600 text-sm mt-2 line-clamp-3">
-                  {article.excerpt}
-                </p>
+        <div className={`${isListView ? 'flex-1' : ''}`}>
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              {/* Category Badge */}
+              {article.category && (
+                <Badge variant="secondary" className="text-xs">
+                  {article.category}
+                </Badge>
               )}
-            </div>
 
-            {/* Author Info */}
-            {article.author && (
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
-                  {article.author.full_name.charAt(0)}
-                </div>
-                <span>{article.author.full_name}</span>
-                {article.author.verified && (
-                  <Badge variant="outline" className="text-xs px-1 py-0">
-                    Verified
-                  </Badge>
+              {/* Title and Excerpt */}
+              <div>
+                <h3 className={`font-semibold line-clamp-2 group-hover:text-blue-600 transition-colors ${isListView ? 'text-xl' : 'text-lg'}`}>
+                  {article.title}
+                </h3>
+                {article.excerpt && (
+                  <p className="text-gray-600 text-sm mt-2 line-clamp-3">
+                    {article.excerpt}
+                  </p>
                 )}
               </div>
-            )}
 
-            {/* Interaction Stats */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4 text-sm text-gray-500">
-                <button
-                  onClick={handleLike}
-                  className={`flex items-center gap-1 hover:text-red-500 transition-colors ${
-                    article.userInteractions?.isLiked ? 'text-red-500' : ''
-                  }`}
-                >
-                  <Heart className={`h-4 w-4 ${article.userInteractions?.isLiked ? 'fill-current' : ''}`} />
-                  {article.interactions.likes}
-                </button>
-
-                <span className="flex items-center gap-1">
-                  <Eye className="h-4 w-4" />
-                  {article.interactions.views || 0}
-                </span>
-
-                <span className="flex items-center gap-1">
-                  <MessageCircle className="h-4 w-4" />
-                  {article.interactions.comments_count || 0}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {/* Save Button */}
-                <button
-                  onClick={handleSave}
-                  className={`text-xs px-2 py-1 rounded hover:bg-gray-100 transition-colors ${
-                    article.userInteractions?.isSaved ? 'bg-blue-100 text-blue-600' : 'text-gray-500'
-                  }`}
-                >
-                  {article.userInteractions?.isSaved ? 'Đã lưu' : 'Lưu'}
-                </button>
-
-                {/* Share Button */}
-                <button
-                  onClick={handleShare}
-                  className="text-xs px-2 py-1 rounded hover:bg-gray-100 transition-colors text-gray-500"
-                >
-                  Chia sẻ
-                </button>
-              </div>
-            </div>
-
-            {/* Date and Reading Time */}
-            <div className="flex items-center justify-between text-xs text-gray-400">
-              <span>{new Date(article.created_at).toLocaleDateString('vi-VN')}</span>
-              {article.reading_time && (
-                <span>{article.reading_time} phút đọc</span>
+              {/* Author Info */}
+              {article.author && (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
+                    {article.author.full_name.charAt(0)}
+                  </div>
+                  <span>{article.author.full_name}</span>
+                  {article.author.verified && (
+                    <Badge variant="outline" className="text-xs px-1 py-0">
+                      ✓ Verified
+                    </Badge>
+                  )}
+                </div>
               )}
+
+              {/* Interaction Stats */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4 text-sm text-gray-500">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleLike();
+                    }}
+                    className={`flex items-center gap-1 hover:text-red-500 transition-colors ${
+                      article.userInteractions?.isLiked ? 'text-red-500' : ''
+                    }`}
+                  >
+                    <Heart className={`h-4 w-4 ${article.userInteractions?.isLiked ? 'fill-current' : ''}`} />
+                    {article.interactions.likes}
+                  </button>
+
+                  <span className="flex items-center gap-1">
+                    <Eye className="h-4 w-4" />
+                    {article.interactions.views || 0}
+                  </span>
+
+                  <span className="flex items-center gap-1">
+                    <MessageCircle className="h-4 w-4" />
+                    {article.interactions.comments_count || 0}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleSave();
+                    }}
+                    className={`text-xs px-2 py-1 rounded hover:bg-gray-100 transition-colors ${
+                      article.userInteractions?.isSaved ? 'bg-blue-100 text-blue-600' : 'text-gray-500'
+                    }`}
+                  >
+                    {article.userInteractions?.isSaved ? 'Đã lưu' : 'Lưu'}
+                  </button>
+
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleShare();
+                    }}
+                    className="text-xs px-2 py-1 rounded hover:bg-gray-100 transition-colors text-gray-500"
+                  >
+                    Chia sẻ
+                  </button>
+                </div>
+              </div>
+
+              {/* Date and Reading Time */}
+              <div className="flex items-center justify-between text-xs text-gray-400">
+                <span>{formatDate(article.created_at)}</span>
+                {article.reading_time && (
+                  <span>{article.reading_time} phút đọc</span>
+                )}
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </div>
-    </Card>
+          </CardContent>
+        </div>
+      </Card>
+    </Link>
   );
 };
 
-// =====================================================
-// MAIN ARTICLES LIST PAGE
-// =====================================================
-
+// ✅ MAIN COMPONENT
 const ArticlesListPage: React.FC = () => {
   const { user } = useAuth();
+  const debug = useArticlesDebug();
 
   // Filter states
   const [searchQuery, setSearchQuery] = useState("");
@@ -187,7 +205,7 @@ const ArticlesListPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [limit] = useState(12);
 
-  // Article filters for API
+  // ✅ Article filters for API
   const [articleFilters, setArticleFilters] = useState<ArticleFilters>({
     limit,
     page: currentPage,
@@ -198,15 +216,16 @@ const ArticlesListPage: React.FC = () => {
     status: "published"
   });
 
-  // Load articles with current filters
+  // ✅ Use REAL API hook
   const {
     articles,
     isLoading,
+    error,
     pagination,
     refetch
   } = useArticles(articleFilters);
 
-  // Categories (could be fetched from API)
+  // Categories
   const categories = [
     { value: "", label: "Tất cả danh mục" },
     { value: "Sức khỏe trẻ em", label: "Sức khỏe trẻ em" },
@@ -224,7 +243,7 @@ const ArticlesListPage: React.FC = () => {
     { value: "created_at", label: "Ngày tạo" }
   ];
 
-  // Apply filters when they change
+  // ✅ Apply filters when they change
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       setArticleFilters({
@@ -281,6 +300,34 @@ const ArticlesListPage: React.FC = () => {
     toast.success('Đã chia sẻ bài viết');
   };
 
+  // ✅ Connection status indicator
+  const renderConnectionStatus = () => {
+    const isConnected = debug.debugInfo.apiConnection === 'connected';
+    const isAuthenticated = debug.debugInfo.authStatus === 'authenticated';
+
+    return (
+      <div className="flex items-center gap-2 text-sm">
+        {isConnected ? (
+          <div className="flex items-center gap-1 text-green-600">
+            <Wifi className="h-4 w-4" />
+            <span>API Connected</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1 text-red-600">
+            <WifiOff className="h-4 w-4" />
+            <span>API Disconnected</span>
+          </div>
+        )}
+
+        {isAuthenticated ? (
+          <Badge variant="default" className="text-xs">Authenticated</Badge>
+        ) : (
+          <Badge variant="destructive" className="text-xs">Not Authenticated</Badge>
+        )}
+      </div>
+    );
+  };
+
   const renderPagination = () => {
     if (!pagination || pagination.total_pages <= 1) return null;
 
@@ -289,7 +336,6 @@ const ArticlesListPage: React.FC = () => {
     const currentPageNum = pagination.current_page;
     const totalPages = pagination.total_pages;
 
-    // Calculate page range
     let startPage = Math.max(1, currentPageNum - Math.floor(maxVisiblePages / 2));
     let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
 
@@ -349,7 +395,7 @@ const ArticlesListPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
-        {/* Header */}
+        {/* ✅ Enhanced Header with Connection Status */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -358,17 +404,51 @@ const ArticlesListPage: React.FC = () => {
             <p className="text-gray-600">
               Khám phá kiến thức y tế từ các chuyên gia hàng đầu
             </p>
+
+            {/* ✅ Connection Status */}
+            <div className="mt-2">
+              {renderConnectionStatus()}
+            </div>
           </div>
 
-          {user && (
-            <Link to="/articles/create">
-              <Button className="mt-4 md:mt-0">
-                <Plus className="h-4 w-4 mr-2" />
-                Viết bài mới
-              </Button>
-            </Link>
-          )}
+          <div className="mt-4 md:mt-0 flex items-center gap-3">
+            {user && (
+              <Link to="/articles/create">
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Viết bài mới
+                </Button>
+              </Link>
+            )}
+
+            <Button
+              variant="outline"
+              onClick={refetch}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              Làm mới
+            </Button>
+          </div>
         </div>
+
+        {/* ✅ Error Handling */}
+        {error && (
+          <Alert className="mb-6">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="flex items-center justify-between">
+              <span>{error}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={refetch}
+              >
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Thử lại
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Filters & Search */}
         <Card className="mb-8">
@@ -471,7 +551,7 @@ const ArticlesListPage: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Results Summary */}
+        {/* ✅ Results Summary */}
         {pagination && (
           <div className="flex items-center justify-between mb-6">
             <div className="text-sm text-gray-600">
@@ -488,18 +568,18 @@ const ArticlesListPage: React.FC = () => {
           </div>
         )}
 
-        {/* Loading State */}
+        {/* ✅ Loading State */}
         {isLoading && (
           <div className="flex justify-center items-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-            <span className="ml-2 text-gray-600">Đang tải bài viết...</span>
+            <span className="ml-2 text-gray-600">Đang tải bài viết từ API...</span>
           </div>
         )}
 
-        {/* Articles Grid/List */}
-        {!isLoading && articles && (
+        {/* ✅ Articles Grid/List */}
+        {!isLoading && (
           <>
-            {articles.length > 0 ? (
+            {articles && articles.length > 0 ? (
               <div className={
                 viewMode === 'grid'
                   ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
@@ -526,20 +606,36 @@ const ArticlesListPage: React.FC = () => {
                   <p className="text-gray-600 mb-6">
                     {searchQuery
                       ? `Không có bài viết nào phù hợp với "${searchQuery}"`
-                      : "Không có bài viết nào trong danh mục này"
+                      : error
+                        ? "Có lỗi khi tải dữ liệu từ API"
+                        : "Không có bài viết nào trong danh mục này"
                     }
                   </p>
 
-                  {searchQuery && (
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setSearchQuery("");
-                        setSelectedCategory("");
-                      }}
-                    >
-                      Xóa bộ lọc
-                    </Button>
+                  {(searchQuery || error) && (
+                    <div className="flex justify-center gap-2">
+                      {searchQuery && (
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setSearchQuery("");
+                            setSelectedCategory("");
+                          }}
+                        >
+                          Xóa bộ lọc
+                        </Button>
+                      )}
+
+                      {error && (
+                        <Button
+                          variant="outline"
+                          onClick={refetch}
+                        >
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Thử lại
+                        </Button>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -550,7 +646,7 @@ const ArticlesListPage: React.FC = () => {
           </>
         )}
 
-        {/* Quick Stats */}
+        {/* ✅ Quick Stats (chỉ hiển thị khi có dữ liệu) */}
         {!isLoading && articles && articles.length > 0 && (
           <Card className="mt-12">
             <CardHeader>
@@ -603,6 +699,72 @@ const ArticlesListPage: React.FC = () => {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* ✅ Debug Panel - only in development */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">🔍 Debug Information</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                  <div>
+                    <div className="font-semibold">API Status</div>
+                    <div className={`${debug.debugInfo.apiConnection === 'connected' ? 'text-green-600' : 'text-red-600'}`}>
+                      {debug.debugInfo.apiConnection}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="font-semibold">Auth Status</div>
+                    <div className={`${debug.debugInfo.authStatus === 'authenticated' ? 'text-green-600' : 'text-red-600'}`}>
+                      {debug.debugInfo.authStatus}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="font-semibold">API Calls</div>
+                    <div>{debug.apiCalls.total} ({debug.apiCalls.successful} success)</div>
+                  </div>
+
+                  <div>
+                    <div className="font-semibold">Cache Size</div>
+                    <div>{debug.cacheStatus.size} items</div>
+                  </div>
+                </div>
+
+                {debug.debugInfo.lastError && (
+                  <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded">
+                    <div className="text-xs text-red-700">
+                      <strong>Last Error:</strong> {debug.debugInfo.lastError}
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-3 flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={debug.runHealthCheck}
+                    className="text-xs"
+                  >
+                    Run Health Check
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={debug.clearCache}
+                    className="text-xs"
+                  >
+                    Clear Cache
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         )}
       </div>
     </div>

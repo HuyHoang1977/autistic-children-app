@@ -16,7 +16,8 @@ class Comment(db.Model):
     is_approved = db.Column(db.Boolean, default=True)
 
     # Relationships
-    content = db.relationship('Content', back_populates='comments')
+    # ✅ FIX: Sử dụng backref thay vì back_populates
+    content = db.relationship('Content', backref='content_comments', lazy='select')
     user = db.relationship('User', backref=db.backref('comments', lazy=True))
     parent = db.relationship('Comment', remote_side=[comment_id], backref='replies')
 
