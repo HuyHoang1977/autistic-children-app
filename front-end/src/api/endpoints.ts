@@ -19,6 +19,18 @@ export const API_ENDPOINTS = {
     SEARCH: "/users/search",
   },
 
+  PROFILE: {
+    GET: "/profile",
+    UPDATE: "/profile",
+    ADD_CHILD: "/profile/child",
+    UPDATE_CHILD: (child_id: number) => `/profile/child/${child_id}`,
+    DELETE_CHILD: (child_id: number) => `/profile/child/${child_id}`,
+    // Avatar endpoints
+    AVATAR_UPLOAD: "/profile/avatar",
+    AVATAR_UPDATE: "/profile/avatar", 
+    AVATAR_DELETE: "/profile/avatar",
+  },
+
   // Article endpoints
   ARTICLES: {
     LIST: "/articles",

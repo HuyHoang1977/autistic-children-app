@@ -68,11 +68,19 @@ services:
     volumes:
       - ./app:/app/app
       - ./migrations:/app/migrations
+      - seed-marker:/app
     command: >
       sh -c "
         echo '🚀 Starting Flask application with auto MinIO setup...' &&
         flask db upgrade &&
-        python seed.py &&
+        if [ ! -f /app/.seed_done ]; then
+          echo '🌱 Running initial seed data...' &&
+          python seed.py &&
+          touch /app/.seed_done &&
+          echo '✅ Seed completed - marker file created'
+        else
+          echo '⏭️  Seed already completed, skipping...'
+        fi &&
         echo '📦 MinIO will auto-setup when Flask imports config...' &&
         flask run --host=0.0.0.0
       "
@@ -80,3 +88,4 @@ services:
 volumes:
   db-volume:
   minio-data:
+  seed-marker:

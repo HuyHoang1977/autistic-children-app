@@ -41,6 +41,7 @@ export interface ParentInfo {
 }
 
 export interface ParentUser extends BaseUser {
+  children: boolean;
   role_id: typeof ROLE_PARENT;
   parent_info: ParentInfo | null;
 }

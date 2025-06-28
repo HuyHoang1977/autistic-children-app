@@ -14,6 +14,8 @@ interface AuthContextType {
   logout: () => Promise<void>
   hasRole: (roles: number | number[]) => boolean
   updateUser: (userData: Partial<User>) => void
+  refreshUser: () => Promise<void>
+  userVersion: number // For forcing re-renders
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -25,6 +27,7 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [userVersion, setUserVersion] = useState<number>(0) // Force re-render trigger
 
   useEffect(() => {
     const initAuth = async (): Promise<void> => {
@@ -37,6 +40,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         const currentUser = await authService.getCurrentUser()
         setUser(currentUser)
+        setUserVersion(prev => prev + 1) // Trigger re-render
       } catch (error) {
         console.error("Auth initialization failed:", error)
         localStorage.removeItem("auth_token")
@@ -54,6 +58,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const { user: userData } = await authService.login(credentials)
       setUser(userData)
+      setUserVersion(prev => prev + 1) // Trigger re-render
     } finally {
       setIsLoading(false)
     }
@@ -64,6 +69,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const { user: newUser } = await authService.register(userData)
       setUser(newUser)
+      setUserVersion(prev => prev + 1) // Trigger re-render
     } finally {
       setIsLoading(false)
     }
@@ -74,6 +80,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       await authService.logout()
       setUser(null)
+      setUserVersion(prev => prev + 1) // Trigger re-render
     } finally {
       setIsLoading(false)
     }
@@ -92,23 +99,49 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     [user],
   )
 
+  const refreshUser = useCallback(async (): Promise<void> => {
+    try {
+      setIsLoading(true)
+      console.log('🔄 Refreshing user data...')
+      const currentUser = await authService.refreshCurrentUser()
+      console.log('✅ User data refreshed:', currentUser)
+      setUser(currentUser)
+      setUserVersion(prev => prev + 1) // Trigger re-render
+    } catch (error: any) {
+      console.error("Failed to refresh user:", error)
+      // If token is invalid, clear user
+      if (error.response?.status === 401) {
+        setUser(null)
+        localStorage.removeItem("auth_token")
+      }
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
   const updateUser = useCallback(
     (userData: Partial<User>): void => {
       if (user) {
         setUser(prevUser => {
           if (!prevUser) return prevUser
-          // Ensure the role_id stays the same and only allowed fields are updated
-          if (prevUser.role_id === ROLE_PARENT) {
-            return { ...prevUser, ...userData, role_id: ROLE_PARENT }
-          }
-          if (prevUser.role_id === ROLE_DOCTOR) {
-            return { ...prevUser, ...userData, role_id: ROLE_DOCTOR }
-          }
-          if (prevUser.role_id === ROLE_ADMIN) {
-            return { ...prevUser, ...userData, role_id: ROLE_ADMIN }
-          }
-          return prevUser
+          
+          // Create updated user with proper type handling
+          const updatedUser = { 
+            ...prevUser, 
+            ...userData,
+            // Always preserve the role_id and user_id to maintain type integrity
+            role_id: prevUser.role_id,
+            user_id: prevUser.user_id
+          } as User
+          
+          console.log('🔄 User updated in context:', {
+            old: prevUser,
+            new: updatedUser,
+            changes: userData
+          })
+          return updatedUser
         })
+        setUserVersion(prev => prev + 1) // Trigger re-render
       }
     },
     [user],
@@ -123,6 +156,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     hasRole,
     updateUser,
+    refreshUser,
+    userVersion,
   }
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>

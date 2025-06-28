@@ -132,6 +132,7 @@ def create_app():
         from app.routers.auth_router import bp as auth_bp
         from app.routers.articles_router import bp as articles_bp
         from app.routers.image_router import bp as image_bp
+        from app.routers.profile_router import bp as profile_bp
 
         # Try to import comments router (may not exist in all versions)
         try:
@@ -152,6 +153,10 @@ def create_app():
         # Images routes
         app.register_blueprint(image_bp, url_prefix='/api/images')
         logger.info("✅ Images blueprint registered: /api/images")
+
+        # Profile routes
+        app.register_blueprint(profile_bp, url_prefix='/api/profile')
+        logger.info("✅ Profile blueprint registered: /api/profile")
 
         # Comments routes (if available)
         if comments_available:
