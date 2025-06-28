@@ -7,6 +7,7 @@ import AppLayout from "../components/layout/AppLayout"
 import LoginPage from "../pages/auth/LoginPage"
 import RegisterPage from "../pages/auth/RegisterPage"
 import HomePage from "../pages/public/HompPage"
+import ProfilePage from "../pages/profile/ProfilePage"
 
 // Articles pages
 import ArticlesListPage from "../pages/articles/ArticlesListPage"
@@ -26,6 +27,7 @@ const AppRouter: React.FC = () => {
 
             {/* Public routes */}
             <Route path="/" element={<HomePage />} />
+            <Route path="/profile" element={<ProfilePage />} />
 
             {/* Articles routes */}
             <Route path="/articles" element={<ArticlesListPage />} />

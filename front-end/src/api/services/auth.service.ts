@@ -433,6 +433,54 @@ class AuthService {
   }
 
   /**
+   * Force refresh current user information (no cache)
+   */
+  async refreshCurrentUser(): Promise<AuthenticatedUser> {
+    try {
+      console.log('🔄 Force refreshing current user...');
+
+      const response = await apiClient.get<{
+        success: boolean;
+        data?: AuthenticatedUser;
+        errors?: Array<string | { field: string; message: string }>;
+        error?: string;
+      }>(API_ENDPOINTS.USERS.PROFILE);
+
+      console.log('📥 Force refresh user response:', {
+        status: response.status,
+        success: response.data.success
+      });
+
+      if (!response.data.success || !response.data.data) {
+        const errorMessages = this.extractErrorMessages(response.data);
+        throw new Error(errorMessages.join("; "));
+      }
+
+      const user = response.data.data;
+      this.setUserData(user);
+
+      console.log('✅ User data force refreshed:', user);
+      return user;
+
+    } catch (error: any) {
+      console.error("❌ Failed to force refresh current user:", error);
+
+      // If unauthorized, clear tokens
+      if (error.response?.status === 401) {
+        console.log('🧹 Unauthorized - clearing tokens');
+        this.clearTokens();
+      }
+
+      if (error.response?.data) {
+        const errorMessages = this.extractErrorMessages(error.response.data);
+        throw new Error(errorMessages.join("; "));
+      }
+
+      throw new Error(error.message || "Failed to force refresh current user");
+    }
+  }
+
+  /**
    * Refresh authentication token
    */
   async refreshToken(): Promise<string> {
