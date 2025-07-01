@@ -1,0 +1,266 @@
+/* AdminDashboard.css - Dropdown Fix Styles */
+
+/* ========================================
+   DROPDOWN Z-INDEX FIXES
+   ======================================== */
+
+/* Ensure dropdown menus are always on top */
+.admin-dropdown-menu {
+  position: absolute !important;
+  z-index: 9999 !important;
+  background: white !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+  backdrop-filter: blur(10px);
+  min-width: 180px;
+  overflow: hidden;
+}
+
+/* Dropdown backdrop */
+.admin-dropdown-backdrop {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9998 !important;
+  background: transparent;
+}
+
+/* ========================================
+   TABLE OVERFLOW FIXES
+   ======================================== */
+
+/* Ensure table container doesn't clip dropdowns */
+.admin-table-container {
+  position: relative;
+  overflow: visible !important;
+}
+
+/* Table wrapper with proper overflow handling */
+.admin-table-wrapper {
+  overflow-x: auto;
+  overflow-y: visible !important;
+  position: relative;
+}
+
+/* Table cells with actions */
+.admin-table-actions-cell {
+  position: relative;
+  overflow: visible !important;
+}
+
+/* Table rows */
+.admin-table-row {
+  position: relative;
+}
+
+/* ========================================
+   MODAL Z-INDEX STACKING
+   ======================================== */
+
+/* Modal backdrop */
+.admin-modal-backdrop {
+  z-index: 8000 !important;
+}
+
+/* Modal content */
+.admin-modal-content {
+  z-index: 8001 !important;
+}
+
+/* ========================================
+   DROPDOWN MENU ANIMATIONS
+   ======================================== */
+
+/* Smooth dropdown animations */
+.admin-dropdown-enter {
+  opacity: 0;
+  transform: scale(0.95) translateY(-10px);
+}
+
+.admin-dropdown-enter-active {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  transition: all 0.15s ease-out;
+}
+
+.admin-dropdown-exit {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+.admin-dropdown-exit-active {
+  opacity: 0;
+  transform: scale(0.95) translateY(-10px);
+  transition: all 0.1s ease-in;
+}
+
+/* ========================================
+   BUTTON STYLES
+   ======================================== */
+
+/* Dropdown trigger button */
+.admin-dropdown-trigger {
+  position: relative;
+  z-index: 1;
+}
+
+.admin-dropdown-trigger:hover {
+  background-color: #f3f4f6;
+}
+
+/* Dropdown menu items */
+.admin-dropdown-item {
+  transition: all 0.15s ease-in-out;
+}
+
+.admin-dropdown-item:hover {
+  background-color: #f9fafb;
+}
+
+.admin-dropdown-item:focus {
+  outline: none;
+  background-color: #f3f4f6;
+}
+
+/* Status-specific hover colors */
+.admin-dropdown-item.status-activate:hover {
+  background-color: #f0fdf4 !important;
+}
+
+.admin-dropdown-item.status-deactivate:hover {
+  background-color: #fef2f2 !important;
+}
+
+.admin-dropdown-item.action-delete:hover {
+  background-color: #fef2f2 !important;
+}
+
+/* ========================================
+   RESPONSIVE FIXES
+   ======================================== */
+
+/* Mobile responsive dropdown positioning */
+@media (max-width: 640px) {
+  .admin-dropdown-menu {
+    left: auto !important;
+    right: 0 !important;
+    min-width: 160px;
+  }
+}
+
+/* Tablet responsive */
+@media (max-width: 768px) {
+  .admin-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+/* Force visibility for dropdowns */
+.force-visible {
+  overflow: visible !important;
+  position: relative !important;
+}
+
+/* High z-index utility */
+.z-dropdown {
+  z-index: 9999 !important;
+}
+
+/* Medium z-index utility */
+.z-backdrop {
+  z-index: 9998 !important;
+}
+
+/* Low z-index utility for modals */
+.z-modal {
+  z-index: 8000 !important;
+}
+
+/* ========================================
+   SCROLLBAR STYLING
+   ======================================== */
+
+/* Custom scrollbar for table */
+.admin-table-wrapper::-webkit-scrollbar {
+  height: 6px;
+}
+
+.admin-table-wrapper::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.admin-table-wrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.admin-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ========================================
+   LOADING STATES
+   ======================================== */
+
+/* Loading overlay for dropdowns */
+.admin-dropdown-loading {
+  position: relative;
+}
+
+.admin-dropdown-loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+/* ========================================
+   ACCESSIBILITY IMPROVEMENTS
+   ======================================== */
+
+/* Focus styles for dropdown items */
+.admin-dropdown-item:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: -2px;
+}
+
+/* Screen reader only text */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ========================================
+   PRINT STYLES
+   ======================================== */
+
+@media print {
+  .admin-dropdown-menu,
+  .admin-dropdown-backdrop,
+  .admin-modal-backdrop {
+    display: none !important;
+  }
+}

@@ -124,7 +124,7 @@ def create_app():
         except Exception as e:
             logger.error(f"❌ Error creating database tables: {e}")
 
-    # ✅ Register ALL blueprints
+    # ✅ Register ALL blueprints including ADMIN and PROFILE
     logger.info("📋 Registering API blueprints...")
 
     try:
@@ -132,7 +132,22 @@ def create_app():
         from app.routers.auth_router import bp as auth_bp
         from app.routers.articles_router import bp as articles_bp
         from app.routers.image_router import bp as image_bp
-        from app.routers.profile_router import bp as profile_bp
+
+        # Try to import profile router (from develop)
+        try:
+            from app.routers.profile_router import bp as profile_bp
+            profile_available = True
+        except ImportError:
+            profile_available = False
+            logger.warning("⚠️ Profile router not found - skipping profile endpoints")
+
+        # Try to import admin router (from feature/delete-user)
+        try:
+            from app.routers.admin_router import bp as admin_bp
+            admin_available = True
+        except ImportError:
+            admin_available = False
+            logger.warning("⚠️ Admin router not found - skipping admin endpoints")
 
         # Try to import comments router (may not exist in all versions)
         try:
@@ -154,9 +169,15 @@ def create_app():
         app.register_blueprint(image_bp, url_prefix='/api/images')
         logger.info("✅ Images blueprint registered: /api/images")
 
-        # Profile routes
-        app.register_blueprint(profile_bp, url_prefix='/api/profile')
-        logger.info("✅ Profile blueprint registered: /api/profile")
+        # Profile routes (if available)
+        if profile_available:
+            app.register_blueprint(profile_bp, url_prefix='/api/profile')
+            logger.info("✅ Profile blueprint registered: /api/profile")
+
+        # Admin routes (if available)
+        if admin_available:
+            app.register_blueprint(admin_bp, url_prefix='/api/admin')
+            logger.info("✅ Admin blueprint registered: /api/admin")
 
         # Comments routes (if available)
         if comments_available:
@@ -171,6 +192,8 @@ def create_app():
         logger.error("   - app/routers/auth_router.py")
         logger.error("   - app/routers/articles_router.py")
         logger.error("   - app/routers/image_router.py")
+        logger.error("   - app/routers/profile_router.py (optional)")
+        logger.error("   - app/routers/admin_router.py (optional)")
         logger.error("   - app/routers/comments_router.py (optional)")
     except Exception as e:
         logger.error(f"❌ Error registering blueprints: {e}")
@@ -178,16 +201,26 @@ def create_app():
     # ✅ Enhanced health check endpoint with MinIO status
     @app.route('/')
     def health_check():
+        services = {
+            'auth': {'endpoint': '/api/auth', 'health': '/api/auth/health'},
+            'articles': {'endpoint': '/api/articles', 'health': '/api/articles/health'},
+            'comments': {'endpoint': '/api/v1/comments', 'health': '/api/v1/comments/health'},
+            'images': {'endpoint': '/api/images', 'health': '/api/images/health'}
+        }
+
+        # Add profile service if available
+        if 'profile_available' in locals() and profile_available:
+            services['profile'] = {'endpoint': '/api/profile', 'health': '/api/profile/health'}
+
+        # Add admin service if available
+        if 'admin_available' in locals() and admin_available:
+            services['admin'] = {'endpoint': '/api/admin', 'health': '/api/admin/health'}
+
         return {
             'message': 'Health Care API is running!',
             'status': 'healthy',
             'version': '1.0.0',
-            'services': {
-                'auth': {'endpoint': '/api/auth', 'health': '/api/auth/health'},
-                'articles': {'endpoint': '/api/articles', 'health': '/api/articles/health'},
-                'comments': {'endpoint': '/api/v1/comments', 'health': '/api/v1/comments/health'},
-                'images': {'endpoint': '/api/images', 'health': '/api/images/health'}
-            },
+            'services': services,
             'debug_endpoints': {
                 'routes': '/debug/routes',
                 'test_images': '/test/images',
@@ -228,15 +261,24 @@ def create_app():
                  services_status['minio'].get('status') == 'healthy')
         )
 
+        endpoints = {
+            'auth': '/api/auth/health',
+            'articles': '/api/articles/health',
+            'comments': '/api/v1/comments/health',
+            'images': '/api/images/health'
+        }
+
+        # Add admin endpoint if available
+        try:
+            from app.routers.admin_router import bp as admin_bp
+            endpoints['admin'] = '/api/admin/health'
+        except ImportError:
+            pass
+
         return jsonify({
             'status': 'healthy' if overall_healthy else 'degraded',
             'services': services_status,
-            'endpoints': {
-                'auth': '/api/auth/health',
-                'articles': '/api/articles/health',
-                'comments': '/api/v1/comments/health',
-                'images': '/api/images/health'
-            },
+            'endpoints': endpoints,
             'timestamp': datetime.utcnow().isoformat(),
             'minio_info': services_status.get('minio', {})
         }), 200 if overall_healthy else 503
@@ -282,8 +324,11 @@ def create_app():
             'articles': [r for r in routes if r['rule'].startswith('/api/articles')],
             'comments': [r for r in routes if r['rule'].startswith('/api/v1/comments')],
             'images': [r for r in routes if r['rule'].startswith('/api/images')],
+            'profile': [r for r in routes if r['rule'].startswith('/api/profile')],
+            'admin': [r for r in routes if r['rule'].startswith('/api/admin')],
             'system': [r for r in routes if not any(r['rule'].startswith(prefix) for prefix in
-                                                    ['/api/auth', '/api/articles', '/api/v1/comments', '/api/images'])]
+                                                    ['/api/auth', '/api/articles', '/api/v1/comments', '/api/images',
+                                                     '/api/profile', '/api/admin'])]
         }
 
         return jsonify({
@@ -293,6 +338,8 @@ def create_app():
                 'articles': len(grouped_routes['articles']),
                 'comments': len(grouped_routes['comments']),
                 'images': len(grouped_routes['images']),
+                'profile': len(grouped_routes['profile']),
+                'admin': len(grouped_routes['admin']),
                 'system': len(grouped_routes['system'])
             },
             'routes_by_service': grouped_routes
@@ -351,6 +398,23 @@ def create_app():
             'note': 'Use these endpoints for comment operations'
         })
 
+    # ✅ Test admin endpoint
+    @app.route('/test/admin')
+    def test_admin():
+        """Test endpoint to verify admin service is working"""
+        return jsonify({
+            'message': 'Admin service test endpoint',
+            'available_endpoints': [
+                'GET /api/admin/users (requires admin token)',
+                'GET /api/admin/users/<id> (requires admin token)',
+                'PUT /api/admin/users/<id>/status (requires admin token)',
+                'DELETE /api/admin/users/<id> (requires admin token)',
+                'GET /api/admin/stats (requires admin token)',
+                'GET /api/admin/health'
+            ],
+            'note': 'Admin endpoints require valid JWT token with admin role (role_id = 1)'
+        })
+
     # ✅ Test upload endpoint (fallback)
     @app.route('/api/test-upload', methods=['POST', 'OPTIONS'])
     def test_upload():
@@ -390,18 +454,27 @@ def create_app():
     # Global error handlers
     @app.errorhandler(404)
     def not_found(error):
+        available_endpoints = {
+            "auth": "/api/auth/login, /api/auth/register, /api/auth/refresh",
+            "articles": "/api/articles (GET, POST), /api/articles/{id} (GET, PUT, DELETE)",
+            "comments": "/api/v1/comments (GET, POST), /api/v1/comments/{id} (PUT, DELETE)",
+            "images": "/api/images/upload, /api/images/delete, /api/images/list",
+            "debug": "/debug/routes, /test/images, /test/comments (development only)"
+        }
+
+        # Add admin endpoints if available
+        try:
+            from app.routers.admin_router import bp as admin_bp
+            available_endpoints["admin"] = "/api/admin/users, /api/admin/users/{id}, /api/admin/stats"
+        except ImportError:
+            pass
+
         return jsonify({
             "success": False,
             "error": "Endpoint not found",
             "error_code": "NOT_FOUND",
             "requested_url": request.url,
-            "available_endpoints": {
-                "auth": "/api/auth/login, /api/auth/register, /api/auth/refresh",
-                "articles": "/api/articles (GET, POST), /api/articles/{id} (GET, PUT, DELETE)",
-                "comments": "/api/v1/comments (GET, POST), /api/v1/comments/{id} (PUT, DELETE)",
-                "images": "/api/images/upload, /api/images/delete, /api/images/list",
-                "debug": "/debug/routes, /test/images, /test/comments (development only)"
-            }
+            "available_endpoints": available_endpoints
         }), 404
 
     @app.errorhandler(405)
@@ -445,11 +518,19 @@ def create_app():
             if request.method in ['POST', 'PUT']:
                 logger.debug(f"📄 JSON data: {request.get_json()}")
 
+        # Log admin requests
+        if '/api/admin' in request.path:
+            logger.info(f"👑 ADMIN REQUEST: {request.method} {request.path}")
+            if request.method in ['POST', 'PUT']:
+                logger.debug(f"📄 JSON data: {request.get_json()}")
+
         # Log MinIO status requests
         if '/api/minio' in request.path:
             logger.info(f"📦 MINIO REQUEST: {request.method} {request.path}")
 
     logger.info("✅ Flask application initialized successfully!")
     logger.info("🌐 API Server ready to serve requests")
+    logger.info("👑 Admin API endpoints are available at /api/admin/*")
+    logger.info("👤 Profile API endpoints are available at /api/profile/*")
 
     return app
