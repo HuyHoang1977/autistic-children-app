@@ -5,6 +5,8 @@ from flask import Flask, jsonify, request
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 from app.extensions import db
+from app.routers.doctors_router import doctors_bp
+from app.routers.follow_router import follow_bp
 
 # Configure logging
 logging.basicConfig(
@@ -168,6 +170,12 @@ def create_app():
         # Images routes
         app.register_blueprint(image_bp, url_prefix='/api/images')
         logger.info("✅ Images blueprint registered: /api/images")
+        
+        app.register_blueprint(doctors_bp, url_prefix='/api/doctors')
+        logger.info("✅ Doctors blueprint registered: /api/doctors")
+        
+        app.register_blueprint(follow_bp, url_prefix='/api/follow')
+        logger.info("✅ Follow blueprint registered: /api/follow")
 
         # Profile routes (if available)
         if profile_available:
