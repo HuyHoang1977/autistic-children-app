@@ -7,8 +7,10 @@ import ProtectedRoute from "../routes/ProtectedRoute"
 // Auth pages
 import LoginPage from "../pages/auth/LoginPage"
 import RegisterPage from "../pages/auth/RegisterPage"
-import HomePage from "../pages/public/HompPage"
+import HomePage from "../pages/public/HomePage/HomePage"
 import ProfilePage from "../pages/profile/ProfilePage"
+import DoctorsPage from "../pages/public/DoctorPage/DoctorPage"
+import DoctorDetailPage from "../pages/public/DoctorPage/DoctorDetailPage"
 
 // Articles pages
 import ArticlesListPage from "../pages/articles/ArticlesListPage"
@@ -31,6 +33,8 @@ const AppRouter: React.FC = () => {
             {/* Public routes */}
             <Route path="/" element={<HomePage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/doctors" element={<DoctorsPage />} />
+            <Route path="/doctors/:id" element={<DoctorDetailPage />} />
 
             {/* Articles routes */}
             <Route path="/articles" element={<ArticlesListPage />} />

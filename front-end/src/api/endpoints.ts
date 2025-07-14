@@ -24,13 +24,13 @@ export const API_ENDPOINTS = {
     CHANGE_PASSWORD: "/users/change-password",
     SEARCH: "/users/search",
     LIST: "/users",
-    DETAIL: (user_id: number) => `/users/${user_id}`,
-    FOLLOW: (user_id: number) => `/users/${user_id}/follow`,
-    FOLLOWERS: (user_id: number) => `/users/${user_id}/followers`,
-    FOLLOWING: (user_id: number) => `/users/${user_id}/following`,
-    BLOCK: (user_id: number) => `/users/${user_id}/block`,
-    UNBLOCK: (user_id: number) => `/users/${user_id}/unblock`,
-    REPORT: (user_id: number) => `/users/${user_id}/report`,
+    // DETAIL: (user_id: number) => `/users/${user_id}`,
+    // FOLLOW: (user_id: number) => `/users/${user_id}/follow`,
+    // FOLLOWERS: (user_id: number) => `/users/${user_id}/followers`,
+    // FOLLOWING: (user_id: number) => `/users/${user_id}/following`,
+    // BLOCK: (user_id: number) => `/users/${user_id}/block`,
+    // UNBLOCK: (user_id: number) => `/users/${user_id}/unblock`,
+    // REPORT: (user_id: number) => `/users/${user_id}/report`,
     HEALTH: "/users/health",
   },
 
@@ -92,6 +92,39 @@ export const API_ENDPOINTS = {
     BY_ARTICLE: (article_id: number) => `/v1/comments/article/${article_id}`,
     BY_USER: (user_id: number) => `/v1/comments/user/${user_id}`,
     HEALTH: "/v1/comments/health",
+  },
+
+  // Doctors endpoints
+  DOCTORS: {
+    LIST: "/doctors",
+    DETAIL: (doctor_id: number) => `/doctors/${doctor_id}`,
+    SEARCH: "/doctors/search",
+    TOP_RATED: "/doctors/top-rated",
+    MOST_FOLLOWED: "/doctors/most-followed",
+    SPECIALIZATIONS: "/doctors/specializations",
+    STATISTICS: "/doctors/statistics",
+  },
+
+    FOLLOW: {
+    // Doctor follow endpoints
+    TOGGLE_FOLLOW_DOCTOR: (doctor_id: number) => `/follow/doctors/${doctor_id}/toggle`,
+    CHECK_FOLLOW_STATUS: (doctor_id: number) => `/follow/doctors/${doctor_id}/status`,
+    FOLLOWED_DOCTORS: "/follow/doctors",
+    DOCTOR_FOLLOWERS: (doctor_id: number) => `/follow/doctors/${doctor_id}/followers`,
+    DOCTOR_FOLLOWERS_COUNT: (doctor_id: number) => `/follow/doctors/${doctor_id}/followers/count`,
+    
+    // General follow endpoints (for future use)
+    FOLLOW_USER: (user_id: number) => `/follow/users/${user_id}/toggle`,
+    USER_FOLLOWERS: (user_id: number) => `/follow/users/${user_id}/followers`,
+    USER_FOLLOWING: (user_id: number) => `/follow/users/${user_id}/following`,
+    
+    // Batch operations
+    BATCH_FOLLOW: "/follow/batch",
+    BATCH_UNFOLLOW: "/follow/batch-unfollow",
+    
+    // Statistics
+    FOLLOW_STATS: "/follow/stats",
+    HEALTH: "/follow/health",
   },
 
   // ✅ ENHANCED ADMIN ENDPOINTS - Complete with Hard Delete
@@ -251,30 +284,6 @@ export const API_ENDPOINTS = {
     ARTICLES: (tag_id: number) => `/v1/tags/${tag_id}/articles`,
     AUTOCOMPLETE: "/v1/tags/autocomplete",
     HEALTH: "/v1/tags/health",
-  },
-
-  // Doctors endpoints
-  DOCTORS: {
-    LIST: "/v1/doctors",
-    DETAIL: (doctor_id: number) => `/v1/doctors/${doctor_id}`,
-    CREATE: "/v1/doctors",
-    UPDATE: (doctor_id: number) => `/v1/doctors/${doctor_id}`,
-    DELETE: (doctor_id: number) => `/v1/doctors/${doctor_id}`,
-    FOLLOW: (doctor_id: number) => `/v1/doctors/${doctor_id}/follow`,
-    UNFOLLOW: (doctor_id: number) => `/v1/doctors/${doctor_id}/unfollow`,
-    FOLLOWERS: (doctor_id: number) => `/v1/doctors/${doctor_id}/followers`,
-    FOLLOWING: (doctor_id: number) => `/v1/doctors/${doctor_id}/following`,
-    ARTICLES: (doctor_id: number) => `/v1/doctors/${doctor_id}/articles`,
-    SCHEDULE: (doctor_id: number) => `/v1/doctors/${doctor_id}/schedule`,
-    APPOINTMENTS: (doctor_id: number) => `/v1/doctors/${doctor_id}/appointments`,
-    REVIEWS: (doctor_id: number) => `/v1/doctors/${doctor_id}/reviews`,
-    VERIFY: (doctor_id: number) => `/v1/doctors/${doctor_id}/verify`,
-    SEARCH: "/v1/doctors/search",
-    BY_SPECIALTY: (specialty: string) => `/v1/doctors/specialty/${specialty}`,
-    FEATURED: "/v1/doctors/featured",
-    TOP_RATED: "/v1/doctors/top-rated",
-    NEARBY: "/v1/doctors/nearby",
-    HEALTH: "/v1/doctors/health",
   },
 
   // Appointments endpoints

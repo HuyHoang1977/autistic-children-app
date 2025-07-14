@@ -319,16 +319,6 @@ const Header: React.FC = () => {
 
           {/* Right side */}
           <div className="flex items-center space-x-2 sm:space-x-3">
-            {/* Search - Hidden on very small screens */}
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="hidden md:flex h-10 w-10 transition-colors hover:bg-accent"
-              title="Tìm kiếm"
-            >
-              <Search className="h-5 w-5" />
-            </Button>
-
             {/* Theme toggle - Consistent size with tooltip */}
             <Button 
               variant="ghost" 
