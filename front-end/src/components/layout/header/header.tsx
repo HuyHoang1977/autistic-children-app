@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "../../ui/dropdown-menu"
 import { Badge } from "../../ui/badge"
-import { Bell, Search, Menu, User, Settings, LogOut, Heart, BookOpen, Users, Sun, Moon, Stethoscope } from "lucide-react"
+import { Bell, Menu, User, Settings, LogOut, Heart, BookOpen, Users, Sun, Moon, Stethoscope } from "lucide-react"
 import { useAuth } from "../../../hooks/auth/useAuth"
 import {
   isDoctorUser,
@@ -25,9 +25,7 @@ import {
   ROLE_PARENT,
   ROLE_DOCTOR,
 } from "../../../types/user.types"
-import { RoleBasedRenderer } from "../../common/RoleBasedRenderer/RoleBasedRenderer"
 import { useTheme } from "../../theme-provider"
-import { SidebarTrigger } from "../../ui/sidebar"
 
 const Header: React.FC = () => {
   const { user, logout, isAuthenticated, userVersion } = useAuth()
@@ -37,7 +35,6 @@ const Header: React.FC = () => {
   // State để force re-render avatar
   const [avatarKey, setAvatarKey] = useState(0)
   const [avatarError, setAvatarError] = useState(false)
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   // Debug: Track user changes in header
   useEffect(() => {
@@ -67,25 +64,6 @@ const Header: React.FC = () => {
   const handleLogout = async () => {
     await logout()
     navigate("/")
-  }
-
-  const handleMobileMenuClose = () => {
-    setIsMobileMenuOpen(false)
-  }
-
-  const getDashboardLink = () => {
-    if (!user) return "/"
-
-    switch (user.role_id) {
-      case ROLE_ADMIN:
-        return "/admin"
-      case ROLE_DOCTOR:
-        return "/doctor"
-      case ROLE_PARENT:
-        return "/parent"
-      default:
-        return "/"
-    }
   }
 
   return (
@@ -180,13 +158,7 @@ const Header: React.FC = () => {
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link to={getDashboardLink()} className="flex items-center">
-                        <User className="mr-2 h-5 w-5" />
-                        Dashboard
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/profile" className="flex items-center">
+                      <Link to={`/personal/${user?.user_id}`} className="flex items-center">
                         <Settings className="mr-2 h-5 w-5" />
                         Hồ sơ cá nhân
                       </Link>
@@ -297,6 +269,12 @@ const Header: React.FC = () => {
 
           {/* Navigation */}
           <nav className="hidden lg:flex items-center space-x-6">
+            <Link
+              to="/"
+              className="text-sm font-medium transition-colors hover:text-primary flex items-center gap-2">
+              Trang Chủ
+            </Link>
+
             <Link
               to="/articles"
               className="text-sm font-medium transition-colors hover:text-primary flex items-center gap-2">
@@ -458,14 +436,7 @@ const Header: React.FC = () => {
                     </div>
 
                     <DropdownMenuItem asChild>
-                      <Link to={getDashboardLink()} className="flex items-center">
-                        <User className="mr-2 h-5 w-5" />
-                        Dashboard
-                      </Link>
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem asChild>
-                      <Link to="/profile" className="flex items-center">
+                      <Link to={`/personal/${user?.user_id}`} className="flex items-center">
                         <Settings className="mr-2 h-5 w-5" />
                         Hồ sơ cá nhân
                       </Link>

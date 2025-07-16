@@ -228,7 +228,7 @@ const DoctorCard: React.FC<DoctorCardProps> = ({
 
   return (
     <Card className={`overflow-hidden hover:shadow-lg transition-shadow ${compact ? "h-auto" : "h-full"}`}>
-      <Link to={`/doctors/${doctor.doctor_id}`} onClick={handleViewDetails}>
+      <Link to={`/personal/${doctor.user_id}`} onClick={handleViewDetails}>
         <CardContent className={`${compact ? "p-4" : "p-6"}`}>
           {/* Header */}
           <div className="flex items-start gap-4 mb-4">

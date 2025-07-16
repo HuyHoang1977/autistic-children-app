@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { useSearchParams } from "react-router-dom"
+import { useSearchParams, useNavigate } from "react-router-dom"
 import { Button } from "../../../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card"
 import { Badge } from "../../../components/ui/badge"
@@ -22,6 +22,7 @@ import { formatNumber } from "../../../utils/helper"
 const DoctorsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState("all")
+  const navigate = useNavigate()
 
   // Initialize filters from URL params
   const initialFilters: DoctorFilters = {
@@ -59,6 +60,15 @@ const DoctorsPage: React.FC = () => {
   const handleFollowDoctor = async (doctorId: number) => {
     // Implement follow/unfollow logic here
     console.log("Follow/unfollow doctor:", doctorId)
+  }
+
+  const handleViewDoctorDetails = (doctorId: number) => {
+    // Navigate to personal page with doctor's user_id
+    // We need to find the doctor's user_id from the doctor_id
+    const doctor = doctors.find(d => d.doctor_id === doctorId)
+    if (doctor && doctor.user_id) {
+      navigate(`/personal/${doctor.user_id}`)
+    }
   }
 
   const renderDoctorGrid = (doctorsList: any[], loading: boolean) => {
@@ -100,7 +110,13 @@ const DoctorsPage: React.FC = () => {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {doctorsList.map((doctor) => (
-          <DoctorCard key={doctor.doctor_id} doctor={doctor} onFollow={handleFollowDoctor} showFollowButton={true} />
+          <DoctorCard 
+            key={doctor.doctor_id} 
+            doctor={doctor} 
+            onViewDetails={handleViewDoctorDetails}
+            onFollow={handleFollowDoctor} 
+            showFollowButton={true} 
+          />
         ))}
       </div>
     )

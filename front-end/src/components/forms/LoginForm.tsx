@@ -116,7 +116,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
       </div>
 
       {/* Demo accounts */}
-      <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+      {/* <div className="mt-6 p-4 bg-gray-50 rounded-lg">
         <p className="text-xs text-gray-500 mb-2">Tài khoản demo:</p>
         <div className="space-y-1 text-xs">
           <p>
@@ -129,7 +129,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
             <strong>Admin:</strong> admin@example.com / 12345678
           </p>
         </div>
-      </div>
+      </div> */}
     </form>
   )
 }

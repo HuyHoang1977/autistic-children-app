@@ -105,7 +105,30 @@ export const API_ENDPOINTS = {
     STATISTICS: "/doctors/statistics",
   },
 
-    FOLLOW: {
+    // Personal Profile endpoints
+  PERSONAL: {
+    // Profile endpoints
+    PROFILE: (user_id: number) => `/personal/profile/${user_id}`,
+    MY_PROFILE: "/personal/my-profile",
+    
+    // Articles endpoints
+    ARTICLES: (user_id: number) => `/personal/articles/${user_id}`,
+    MY_ARTICLES: "/personal/my-articles",
+    ARTICLE_STATS: (user_id: number) => `/personal/articles/stats/${user_id}`,
+    
+    // Follow endpoints
+    FOLLOWING: (user_id: number) => `/personal/following/${user_id}`,
+    MY_FOLLOWING: "/personal/my-following",
+    FOLLOWERS: (user_id: number) => `/personal/followers/${user_id}`,
+    MY_FOLLOWERS: "/personal/my-followers",
+    FOLLOW_STATS: (user_id: number) => `/personal/follow/stats/${user_id}`,
+    
+    // Dashboard endpoints
+    DASHBOARD: (user_id: number) => `/personal/dashboard/${user_id}`,
+    MY_DASHBOARD: "/personal/my-dashboard",
+  },
+
+  FOLLOW: {
     // Doctor follow endpoints
     TOGGLE_FOLLOW_DOCTOR: (doctor_id: number) => `/follow/doctors/${doctor_id}/toggle`,
     CHECK_FOLLOW_STATUS: (doctor_id: number) => `/follow/doctors/${doctor_id}/status`,
