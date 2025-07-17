@@ -26,6 +26,7 @@ import {
   ROLE_DOCTOR,
 } from "../../../types/user.types"
 import { useTheme } from "../../theme-provider"
+import NotificationDropdown from "./NotificationDropdown"
 
 const Header: React.FC = () => {
   const { user, logout, isAuthenticated, userVersion } = useAuth()
@@ -180,15 +181,9 @@ const Header: React.FC = () => {
                       </DropdownMenuItem>
                     )}
                     {user && (isParentUser(user) || isDoctorUser(user) || isAdminUser(user)) && (
-                      <DropdownMenuItem asChild>
-                        <Link to="/notifications" className="flex items-center">
-                          <Bell className="mr-2 h-5 w-5" />
-                          Thông báo
-                          <Badge variant="destructive" className="ml-auto text-xs">
-                            3
-                          </Badge>
-                        </Link>
-                      </DropdownMenuItem>
+                      <div className="p-2">
+                        <NotificationDropdown />
+                      </div>
                     )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout} className="text-red-600">
@@ -312,17 +307,9 @@ const Header: React.FC = () => {
               <>
                 {/* Notifications - Hidden on very small screens */}
                 {user && (isParentUser(user) || isDoctorUser(user) || isAdminUser(user)) && (
-                  <Link to="/notifications" className="hidden sm:block">
-                    <Button variant="ghost" size="sm" className="relative h-10 w-10">
-                      <Bell className="h-5 w-5" />
-                      <Badge
-                        variant="destructive"
-                        className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center text-xs"
-                      >
-                        3
-                      </Badge>
-                    </Button>
-                  </Link>
+                  <div className="hidden sm:block">
+                    <NotificationDropdown />
+                  </div>
                 )}
 
                 {/* User menu */}
@@ -421,15 +408,9 @@ const Header: React.FC = () => {
                       
                       {/* Mobile notifications */}
                       {user && (isParentUser(user) || isDoctorUser(user) || isAdminUser(user)) && (
-                        <DropdownMenuItem asChild>
-                          <Link to="/notifications" className="flex items-center sm:hidden">
-                            <Bell className="mr-2 h-5 w-5" />
-                            Thông báo
-                            <Badge variant="destructive" className="ml-auto text-xs">
-                              3
-                            </Badge>
-                          </Link>
-                        </DropdownMenuItem>
+                        <div className="sm:hidden">
+                          <NotificationDropdown />
+                        </div>
                       )}
                       
                       <DropdownMenuSeparator />

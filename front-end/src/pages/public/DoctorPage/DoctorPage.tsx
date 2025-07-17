@@ -14,8 +14,8 @@ import {
   useTopRatedDoctors,
   useMostFollowedDoctors,
 } from "../../../hooks/api/useDoctors"
-import DoctorCard from "../../../components/doctors/DoctorCard"
-import DoctorSearch from "../../../components/doctors/DoctorSearch"
+import DoctorCard from "./components/DoctorCard"
+import DoctorSearch from "./components/DoctorSearch"
 import type { DoctorFilters } from "../../../types/doctors.types"
 import { formatNumber } from "../../../utils/helper"
 
