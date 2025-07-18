@@ -10,7 +10,9 @@ import RegisterPage from "../pages/auth/RegisterPage"
 import HomePage from "../pages/public/HomePage/HomePage"
 import ProfilePage from "../pages/profile/ProfilePage"
 import DoctorsPage from "../pages/public/DoctorPage/DoctorPage"
-import DoctorDetailPage from "../pages/public/DoctorPage/DoctorDetailPage"
+import PersonalPage from "../pages/public/PersonalPage/PersonalPage"
+import AboutPage from "../pages/public/AboutPage/AboutPage"
+import ContactPage from "../pages/public/ContactPage/ContactPage"
 
 // Articles pages
 import ArticlesListPage from "../pages/articles/ArticlesListPage"
@@ -34,7 +36,11 @@ const AppRouter: React.FC = () => {
             <Route path="/" element={<HomePage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/doctors" element={<DoctorsPage />} />
-            <Route path="/doctors/:id" element={<DoctorDetailPage />} />
+            <Route path="/personal/:userId" element={<PersonalPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+
+            {/* Protected routes */}
 
             {/* Articles routes */}
             <Route path="/articles" element={<ArticlesListPage />} />

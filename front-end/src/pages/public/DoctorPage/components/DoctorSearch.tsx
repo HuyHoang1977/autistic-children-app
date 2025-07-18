@@ -2,13 +2,13 @@
 
 import type React from "react"
 import { useState } from "react"
-import { Button } from "../../components/ui/button"
-import { Input } from "../../components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select"
-import { Card, CardContent } from "../../components/ui/card"
-import { Badge } from "../../components/ui/badge"
+import { Button } from "../../../../components/ui/button"
+import { Input } from "../../../../components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../components/ui/select"
+import { Card, CardContent } from "../../../../components/ui/card"
+import { Badge } from "../../../../components/ui/badge"
 import { Search, Filter, X, MapPin, Stethoscope, Building } from "lucide-react"
-import type { DoctorFilters } from "../../types/doctors.types"
+import type { DoctorFilters } from "../../../../types/doctors.types"
 
 interface DoctorSearchProps {
   filters: DoctorFilters

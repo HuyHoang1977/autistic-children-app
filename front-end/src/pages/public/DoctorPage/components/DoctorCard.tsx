@@ -3,16 +3,16 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { Card, CardContent, CardFooter } from "../../components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar"
-import { Badge } from "../../components/ui/badge"
-import { Button } from "../../components/ui/button"
+import { Card, CardContent, CardFooter } from "../../../../components/ui/card"
+import { Avatar, AvatarFallback, AvatarImage } from "../../../../components/ui/avatar"
+import { Badge } from "../../../../components/ui/badge"
+import { Button } from "../../../../components/ui/button"
 import { Star, MapPin, Users, CheckCircle2, Heart, MessageCircle, Calendar, Lock } from "lucide-react"
-import type { Doctor } from "../../types/doctors.types"
-import { formatNumber } from "../../utils/helper"
-import { followService } from "../../api/services/follow.service"
-import { useAuth } from "../../hooks/auth/useAuth"
-import { ROLE_PARENT } from "../../types/user.types"
+import type { Doctor } from "../../../../types/doctors.types"
+import { formatNumber } from "../../../../utils/helper"
+import { followService } from "../../../../api/services/follow.service"
+import { useAuth } from "../../../../hooks/auth/useAuth"
+import { ROLE_PARENT } from "../../../../types/user.types"
 
 interface DoctorCardProps {
   doctor: Doctor
@@ -228,7 +228,7 @@ const DoctorCard: React.FC<DoctorCardProps> = ({
 
   return (
     <Card className={`overflow-hidden hover:shadow-lg transition-shadow ${compact ? "h-auto" : "h-full"}`}>
-      <Link to={`/doctors/${doctor.doctor_id}`} onClick={handleViewDetails}>
+      <Link to={`/personal/${doctor.user_id}`} onClick={handleViewDetails}>
         <CardContent className={`${compact ? "p-4" : "p-6"}`}>
           {/* Header */}
           <div className="flex items-start gap-4 mb-4">

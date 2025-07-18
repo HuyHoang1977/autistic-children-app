@@ -105,7 +105,30 @@ export const API_ENDPOINTS = {
     STATISTICS: "/doctors/statistics",
   },
 
-    FOLLOW: {
+    // Personal Profile endpoints
+  PERSONAL: {
+    // Profile endpoints
+    PROFILE: (user_id: number) => `/personal/profile/${user_id}`,
+    MY_PROFILE: "/personal/my-profile",
+    
+    // Articles endpoints
+    ARTICLES: (user_id: number) => `/personal/articles/${user_id}`,
+    MY_ARTICLES: "/personal/my-articles",
+    ARTICLE_STATS: (user_id: number) => `/personal/articles/stats/${user_id}`,
+    
+    // Follow endpoints
+    FOLLOWING: (user_id: number) => `/personal/following/${user_id}`,
+    MY_FOLLOWING: "/personal/my-following",
+    FOLLOWERS: (user_id: number) => `/personal/followers/${user_id}`,
+    MY_FOLLOWERS: "/personal/my-followers",
+    FOLLOW_STATS: (user_id: number) => `/personal/follow/stats/${user_id}`,
+    
+    // Dashboard endpoints
+    DASHBOARD: (user_id: number) => `/personal/dashboard/${user_id}`,
+    MY_DASHBOARD: "/personal/my-dashboard",
+  },
+
+  FOLLOW: {
     // Doctor follow endpoints
     TOGGLE_FOLLOW_DOCTOR: (doctor_id: number) => `/follow/doctors/${doctor_id}/toggle`,
     CHECK_FOLLOW_STATUS: (doctor_id: number) => `/follow/doctors/${doctor_id}/status`,
@@ -307,20 +330,20 @@ export const API_ENDPOINTS = {
 
   // Notifications endpoints
   NOTIFICATIONS: {
-    LIST: "/v1/notifications",
-    DETAIL: (notification_id: number) => `/v1/notifications/${notification_id}`,
-    MARK_READ: (notification_id: number) => `/v1/notifications/${notification_id}/read`,
-    MARK_UNREAD: (notification_id: number) => `/v1/notifications/${notification_id}/unread`,
-    MARK_ALL_READ: "/v1/notifications/mark-all-read",
-    DELETE: (notification_id: number) => `/v1/notifications/${notification_id}`,
-    DELETE_ALL: "/v1/notifications/delete-all",
-    UNREAD_COUNT: "/v1/notifications/unread-count",
-    PREFERENCES: "/v1/notifications/preferences",
-    UPDATE_PREFERENCES: "/v1/notifications/preferences",
-    SUBSCRIBE: "/v1/notifications/subscribe",
-    UNSUBSCRIBE: "/v1/notifications/unsubscribe",
-    TEST: "/v1/notifications/test",
-    HEALTH: "/v1/notifications/health",
+    LIST: "/notifications",
+    DETAIL: (notification_id: number) => `/notifications/${notification_id}`,
+    MARK_READ: (notification_id: number) => `/notifications/${notification_id}/read`,
+    MARK_UNREAD: (notification_id: number) => `/notifications/${notification_id}/unread`,
+    MARK_ALL_READ: "/notifications/mark-all-read",
+    DELETE: (notification_id: number) => `/notifications/${notification_id}`,
+    DELETE_ALL: "/notifications/delete-all",
+    UNREAD_COUNT: "/notifications/unread-count",
+    PREFERENCES: "/notifications/preferences",
+    UPDATE_PREFERENCES: "/notifications/preferences",
+    SUBSCRIBE: "/notifications/subscribe",
+    UNSUBSCRIBE: "/notifications/unsubscribe",
+    TEST: "/notifications/test",
+    HEALTH: "/notifications/health",
   },
 
   // Messages/Chat endpoints

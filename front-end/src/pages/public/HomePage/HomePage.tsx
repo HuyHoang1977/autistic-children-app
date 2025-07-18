@@ -11,7 +11,7 @@ const HomePage: React.FC = () => {
   const { articles: featuredArticles, isLoading } = useArticles({ limit: 6 })
   
   // ✅ Sử dụng useAuth hook thay vì localStorage
-  const { isAuthenticated, user } = useAuth()
+  const { isAuthenticated} = useAuth()
 
   return (
     <div className="min-h-screen">
@@ -461,16 +461,6 @@ const HomePage: React.FC = () => {
                   <Button size="lg" className="bg-white text-blue-600 hover:bg-blue-50 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-0.5 px-6 py-2.5 text-sm font-bold">
                     <Stethoscope className="h-4 w-4 mr-2" />
                     Tìm bác sĩ chuyên nghiệp
-                  </Button>
-                </Link>
-                <Link to="/profile">
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="text-white border-2 border-white/50 bg-white/10 backdrop-blur-sm hover:bg-white hover:text-blue-600 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-0.5 px-6 py-2.5 text-sm font-bold"
-                  >
-                    <Users className="h-4 w-4 mr-2" />
-                    Hồ sơ của tôi
                   </Button>
                 </Link>
               </div>
