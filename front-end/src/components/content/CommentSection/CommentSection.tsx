@@ -387,7 +387,8 @@ const CommentSection: React.FC<CommentSectionProps> = ({
 
   // Handle delete comment
   const handleDeleteComment = async (commentId: number) => {
-    if (!confirm('Bạn có chắc muốn xóa bình luận này?')) return;
+    // Fix: Use window.confirm instead of confirm to avoid ESLint no-restricted-globals error
+    if (!window.confirm('Bạn có chắc muốn xóa bình luận này?')) return;
 
     try {
       await commentService.deleteComment(commentId);

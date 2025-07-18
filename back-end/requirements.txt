@@ -21,5 +21,6 @@ flask-jwt-extended==4.5.3
 minio
 requests
 python-dotenv==1.0.0
+flask-bcrypt
 
 
