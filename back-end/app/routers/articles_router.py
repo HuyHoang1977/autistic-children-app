@@ -1,3 +1,4 @@
+# app/routers/articles_router.py - UPDATED with notification system
 import logging
 import json
 from flask import Blueprint, request, jsonify
@@ -5,6 +6,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models.articles_model import Article
 from app.models.users_model import User
 from app.services.minio_service import minio_service
+from app.services.article_notification_service import trigger_article_notification
 from app.extensions import db
 from datetime import datetime
 from werkzeug.utils import secure_filename
@@ -41,7 +43,7 @@ def get_user_id_from_jwt():
         return None
 
 
-# ✅ FIXED CORS preflight handlers
+# ✅ CORS preflight handlers
 def cors_preflight_response():
     """Common CORS preflight response"""
     response = jsonify({})
@@ -151,12 +153,26 @@ def create_tag_relationships(article_id, tags_string):
         return False
 
 
-# ✅ MAIN ENDPOINT: Create Article (Enhanced with relationships)
+# app/routers/articles_router.py - Cập nhật hàm create_article
+
+def determine_article_status(user_role_id, is_draft=False):
+    """Determine article status based on user role and draft status"""
+    if is_draft:
+        return 'draft'
+
+    # Admin articles can be published immediately
+    if user_role_id == 1:
+        return 'published'
+
+    # Doctor and Parent articles need approval
+    return 'pending'
+
+
 @bp.route('', methods=['POST'])
 @bp.route('/', methods=['POST'])
 @jwt_required()
 def create_article():
-    """Create article with JSON data (enhanced with optional relationships)"""
+    """Create article with JSON data and notification system"""
     logger.info('=== CREATE ARTICLE START ===')
 
     try:
@@ -168,8 +184,6 @@ def create_article():
                 'error_code': 'INVALID_USER_IDENTITY'
             }), 422
 
-        logger.info(f'🔍 Create article request from user_id: {current_user_id}')
-
         # Get JSON data
         data = request.get_json()
         if not data:
@@ -179,16 +193,13 @@ def create_article():
                 'error_code': 'NO_DATA'
             }), 400
 
-        logger.info(f'📋 Received data keys: {list(data.keys())}')
-
-        # ✅ Extract and validate article data
+        # Extract and validate article data
         title = data.get('title', '').strip()
         content = data.get('content', '').strip()
         excerpt = data.get('excerpt', '').strip()
         category = data.get('category', '').strip()
         tags = data.get('tags', '').strip()
-        status = data.get('status', 'draft').strip()
-        featured = data.get('featured', False)
+        is_draft = data.get('is_draft', False)
         featured_image = data.get('featured_image', '').strip()
         meta_description = data.get('meta_description', '').strip()
 
@@ -207,118 +218,72 @@ def create_article():
                 'error_code': 'MISSING_CONTENT'
             }), 400
 
-        if len(title) > 255:
+        # Get user info for status determination
+        user = db.session.query(User).filter_by(user_id=current_user_id).first()
+        if not user:
             return jsonify({
                 'success': False,
-                'error': 'Title too long (max 255 characters)',
-                'error_code': 'TITLE_TOO_LONG'
-            }), 400
+                'error': 'User not found',
+                'error_code': 'USER_NOT_FOUND'
+            }), 404
 
-        logger.info(f'✅ Validation passed - Title: {title[:50]}...')
+        # Determine article status
+        status = determine_article_status(user.role_id, is_draft)
 
-        # ✅ Create article in database
+        # Auto-generate excerpt if not provided
+        if not excerpt and content:
+            excerpt = content[:200] + ('...' if len(content) > 200 else '')
+
+        # ✅ Create article with SAFE parameters only
         try:
-            # Auto-generate excerpt if not provided
-            if not excerpt and content:
-                excerpt = content[:200] + ('...' if len(content) > 200 else '')
+            article = Article(
+                title=title,
+                content=content,
+                content_body=content,
+                excerpt=excerpt,
+                featured_image_url=featured_image,
+                featured_image=featured_image,
+                author_id=current_user_id,
+                status=status,
+                featured=False,  # Only admin can set featured
+                meta_description=meta_description,
+                allow_comments=True,
+                category=category,
+                tags=tags
+            )
 
-            # ✅ CRITICAL FIX: Create article with only valid kwargs
-            article_kwargs = {
-                'title': title,
-                'content': content,
-                'content_body': content,
-                'excerpt': excerpt,
-                'featured_image_url': featured_image,
-                'featured_image': featured_image,
-                'author_id': current_user_id,
-                'status': status,
-                'featured': bool(featured),
-                'meta_description': meta_description,
-                'allow_comments': True,
-                'created_at': datetime.utcnow(),
-                'updated_at': datetime.utcnow()
-            }
-
-            # ✅ Add legacy fields manually (this is what was causing the error)
-            if category:
-                article_kwargs['category'] = category
-
-            if tags:
-                article_kwargs['tags'] = tags
-
-            # ✅ Create article object
-            article = Article(**article_kwargs)
-
-            # Set published_at if publishing immediately
+            # Set published_at and article_status based on status
             if status == 'published':
                 article.published_at = datetime.utcnow()
                 article.article_status = 2
-            else:
+            elif status == 'pending':
                 article.article_status = 1
+            else:  # draft
+                article.article_status = 0
 
-            # Calculate reading time
-            if content:
-                word_count = len(content.split())
-                article.reading_time = max(1, round(word_count / 225))
-
-            # ✅ Save article first to get ID
+            # Save article
             db.session.add(article)
-            db.session.commit()  # Commit to get article_id
+            db.session.commit()
 
-            logger.info(f'✅ Article created with ID: {article.article_id}')
+            logger.info(f'✅ Article created with ID: {article.article_id}, Status: {status}')
 
-            # ✅ Now create relationships if available (non-blocking)
-            relationships_created = []
-
-            if category:
-                if create_category_relationship(article.article_id, category):
-                    relationships_created.append(f'category: {category}')
-                    logger.info(f'✅ Category relationship created: {category}')
-
-            if tags:
-                if create_tag_relationships(article.article_id, tags):
-                    relationships_created.append(f'tags: {tags}')
-                    logger.info(f'✅ Tag relationships created: {tags}')
-
-            # Commit relationships
-            if relationships_created:
-                try:
-                    db.session.commit()
-                    logger.info(f'✅ Relationships committed: {", ".join(relationships_created)}')
-                except Exception as rel_error:
-                    logger.warning(f'⚠️ Relationship commit failed: {str(rel_error)}')
-                    # Don't rollback article, just continue
-
-            # ✅ Get created article with author info for response
+            # Get created article with author info for response
             created_article = db.session.query(Article).filter(
                 Article.article_id == article.article_id
             ).first()
 
-            if not created_article:
-                created_article = article
-
-            # Get author info
-            if created_article.author_id:
-                author = db.session.query(User).filter_by(user_id=created_article.author_id).first()
-                if author:
-                    created_article.author = author
-
             article_data = created_article.to_dict(include_content=True)
-
-            logger.info('✅ Article creation successful')
-            logger.info('=== CREATE ARTICLE SUCCESS ===')
 
             return jsonify({
                 'success': True,
                 'data': article_data,
-                'message': 'Article created successfully',
-                'relationships_created': relationships_created if relationships_created else None
+                'message': f'Article {"saved as draft" if status == "draft" else "submitted for review" if status == "pending" else "published"} successfully',
+                'status': status
             }), 201
 
         except Exception as db_error:
             db.session.rollback()
             logger.error(f'❌ Database error: {str(db_error)}', exc_info=True)
-
             return jsonify({
                 'success': False,
                 'error': f'Failed to save article: {str(db_error)}',
@@ -333,8 +298,307 @@ def create_article():
             'error_code': 'UNEXPECTED_ERROR'
         }), 500
 
+# ✅ ENHANCED: Update Article with Status Management
+@bp.route('/<int:article_id>', methods=['PUT'])
+@jwt_required()
+def update_article(article_id):
+    """Update article with proper status management"""
+    try:
+        current_user_id = get_user_id_from_jwt()
+        if not current_user_id:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid user identity',
+                'error_code': 'INVALID_USER_IDENTITY'
+            }), 422
 
-# ✅ Get Articles with proper pagination
+        # Get existing article
+        article = db.session.query(Article).filter_by(article_id=article_id).first()
+        if not article:
+            return jsonify({
+                'success': False,
+                'error': 'Article not found',
+                'error_code': 'ARTICLE_NOT_FOUND'
+            }), 404
+
+        # Check ownership
+        if article.author_id != current_user_id:
+            return jsonify({
+                'success': False,
+                'error': 'You can only edit your own articles',
+                'error_code': 'PERMISSION_DENIED'
+            }), 403
+
+        # Get JSON data
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No JSON data provided',
+                'error_code': 'NO_DATA'
+            }), 400
+
+        # Get user info for status determination
+        user = db.session.query(User).filter_by(user_id=current_user_id).first()
+        old_status = article.status
+
+        # Update fields
+        if 'title' in data:
+            title = data['title'].strip()
+            if not title:
+                return jsonify({
+                    'success': False,
+                    'error': 'Title cannot be empty',
+                    'error_code': 'INVALID_TITLE'
+                }), 400
+            article.title = title
+
+        if 'content' in data:
+            content = data['content'].strip()
+            if not content:
+                return jsonify({
+                    'success': False,
+                    'error': 'Content cannot be empty',
+                    'error_code': 'INVALID_CONTENT'
+                }), 400
+            article.content = content
+            article.content_body = content
+
+            # Recalculate reading time
+            word_count = len(content.split())
+            article.reading_time = max(1, round(word_count / 225))
+
+        if 'excerpt' in data:
+            article.excerpt = data['excerpt'].strip()
+
+        if 'category' in data:
+            article.category = data['category'].strip()
+
+        if 'tags' in data:
+            article.tags = data['tags'].strip()
+
+        if 'featured_image' in data:
+            article.featured_image = data['featured_image'].strip()
+            article.featured_image_url = data['featured_image'].strip()
+
+        if 'meta_description' in data:
+            article.meta_description = data['meta_description'].strip()
+
+        # Handle status changes
+        is_draft = data.get('is_draft', False)
+        submit_for_review = data.get('submit_for_review', False)
+
+        if submit_for_review and not is_draft:
+            # Submit for review (only if not admin)
+            if user.role_id != 1:
+                article.status = 'pending'
+                article.article_status = 1
+                article.published_at = None
+
+                # Clear rejection reason if resubmitting
+                if hasattr(article, 'rejection_reason'):
+                    article.rejection_reason = None
+                if hasattr(article, 'admin_notes'):
+                    article.admin_notes = None
+
+                # Trigger notification if status changed to pending
+                if old_status != 'pending':
+                    try:
+                        import asyncio
+                        asyncio.create_task(trigger_article_notification('submitted', article))
+                    except Exception as notif_error:
+                        logger.warning(f'⚠️ Notification failed: {str(notif_error)}')
+            else:
+                # Admin can publish immediately
+                article.status = 'published'
+                article.article_status = 2
+                article.published_at = datetime.utcnow()
+
+        elif is_draft:
+            # Save as draft
+            article.status = 'draft'
+            article.article_status = 0
+            article.published_at = None
+
+        # Update timestamp
+        article.updated_at = datetime.utcnow()
+
+        db.session.commit()
+
+        # Return updated article
+        updated_article = article.to_dict(include_content=True)
+
+        logger.info(f'✅ Article {article_id} updated by user {current_user_id}')
+
+        return jsonify({
+            'success': True,
+            'data': updated_article,
+            'message': f'Article {"saved as draft" if article.status == "draft" else "submitted for review" if article.status == "pending" else "updated"} successfully',
+            'status_changed': old_status != article.status
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'❌ Error updating article: {str(e)}', exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': f'Failed to update article: {str(e)}',
+            'error_code': 'UPDATE_ERROR'
+        }), 500
+
+
+# ✅ GET User's Articles with Status Filter
+@bp.route('/my-articles', methods=['GET'])
+@jwt_required()
+def get_my_articles():
+    """Get current user's articles with status filtering"""
+    try:
+        current_user_id = get_user_id_from_jwt()
+        if not current_user_id:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid user identity'
+            }), 422
+
+        # Get query parameters
+        page = request.args.get('page', default=1, type=int)
+        limit = request.args.get('limit', default=10, type=int)
+        status = request.args.get('status', '').strip()
+        search = request.args.get('search', '').strip()
+
+        # Build query
+        query = db.session.query(Article).filter_by(author_id=current_user_id)
+
+        # Apply filters
+        if status:
+            query = query.filter(Article.status == status)
+
+        if search:
+            search_term = f"%{search}%"
+            query = query.filter(
+                db.or_(
+                    Article.title.ilike(search_term),
+                    Article.content.ilike(search_term),
+                    Article.excerpt.ilike(search_term)
+                )
+            )
+
+        # Order by creation date (newest first)
+        query = query.order_by(Article.created_at.desc())
+
+        # Get total count
+        total_count = query.count()
+
+        # Apply pagination
+        offset = (page - 1) * limit
+        articles = query.offset(offset).limit(limit).all()
+
+        # Format response
+        articles_data = []
+        for article in articles:
+            article_data = article.to_dict(include_content=False)
+            articles_data.append(article_data)
+
+        # Calculate pagination info
+        total_pages = (total_count + limit - 1) // limit
+        has_more = offset + limit < total_count
+
+        return jsonify({
+            'success': True,
+            'data': articles_data,
+            'pagination': {
+                'current_page': page,
+                'per_page': limit,
+                'total': total_count,
+                'total_pages': total_pages,
+                'has_more': has_more
+            }
+        }), 200
+
+    except Exception as e:
+        logger.error(f'❌ Error getting user articles: {str(e)}', exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': f'Failed to get user articles: {str(e)}'
+        }), 500
+
+
+# ✅ RESUBMIT Rejected Article
+@bp.route('/<int:article_id>/resubmit', methods=['POST'])
+@jwt_required()
+def resubmit_article(article_id):
+    """Resubmit a rejected article for review"""
+    try:
+        current_user_id = get_user_id_from_jwt()
+        if not current_user_id:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid user identity'
+            }), 422
+
+        # Get article
+        article = db.session.query(Article).filter_by(article_id=article_id).first()
+        if not article:
+            return jsonify({
+                'success': False,
+                'error': 'Article not found'
+            }), 404
+
+        # Check ownership
+        if article.author_id != current_user_id:
+            return jsonify({
+                'success': False,
+                'error': 'You can only resubmit your own articles'
+            }), 403
+
+        # Check if article can be resubmitted
+        if article.status not in ['rejected', 'draft']:
+            return jsonify({
+                'success': False,
+                'error': 'Only rejected or draft articles can be resubmitted'
+            }), 400
+
+        # Update status to pending
+        article.status = 'pending'
+        article.article_status = 1
+        article.updated_at = datetime.utcnow()
+
+        # Clear rejection reason
+        if hasattr(article, 'rejection_reason'):
+            article.rejection_reason = None
+        if hasattr(article, 'admin_notes'):
+            article.admin_notes = None
+
+        db.session.commit()
+
+        # Trigger notification
+        try:
+            import asyncio
+            asyncio.create_task(trigger_article_notification('submitted', article))
+        except Exception as notif_error:
+            logger.warning(f'⚠️ Notification failed: {str(notif_error)}')
+
+        logger.info(f'✅ Article {article_id} resubmitted by user {current_user_id}')
+
+        return jsonify({
+            'success': True,
+            'message': 'Article resubmitted for review successfully',
+            'data': {
+                'article_id': article_id,
+                'status': 'pending'
+            }
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'❌ Error resubmitting article: {str(e)}', exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': f'Failed to resubmit article: {str(e)}'
+        }), 500
+
+
+# ✅ Keep all other existing endpoints from the original file
 @bp.route('', methods=['GET'])
 @bp.route('/', methods=['GET'])
 @jwt_required()
@@ -492,15 +756,27 @@ def get_article_detail(article_id):
                 'error_code': 'ARTICLE_NOT_FOUND'
             }), 404
 
+        # Check if user can view this article
+        if article.status != 'published' and article.author_id != current_user_id:
+            # Only author and admin can view unpublished articles
+            user = db.session.query(User).filter_by(user_id=current_user_id).first()
+            if not user or user.role_id != 1:  # Not admin
+                return jsonify({
+                    'success': False,
+                    'error': 'Article not accessible',
+                    'error_code': 'ARTICLE_NOT_ACCESSIBLE'
+                }), 403
+
         # Get author info
         if not hasattr(article, 'author') or not article.author:
             author = db.session.query(User).filter_by(user_id=article.author_id).first()
             if author:
                 article.author = author
 
-        # Increment view count
-        article.views = (article.views or 0) + 1
-        db.session.commit()
+        # Increment view count only for published articles
+        if article.status == 'published':
+            article.views = (article.views or 0) + 1
+            db.session.commit()
 
         # Get full article data
         article_data = article.to_dict(include_content=True)
@@ -521,135 +797,11 @@ def get_article_detail(article_id):
         }), 500
 
 
-# ✅ Update Article
-@bp.route('/<int:article_id>', methods=['PUT'])
-@jwt_required()
-def update_article(article_id):
-    """Update article"""
-    try:
-        current_user_id = get_user_id_from_jwt()
-        if not current_user_id:
-            return jsonify({
-                'success': False,
-                'error': 'Invalid user identity',
-                'error_code': 'INVALID_USER_IDENTITY'
-            }), 422
-
-        # Get existing article
-        article = db.session.query(Article).filter_by(article_id=article_id).first()
-        if not article:
-            return jsonify({
-                'success': False,
-                'error': 'Article not found',
-                'error_code': 'ARTICLE_NOT_FOUND'
-            }), 404
-
-        # Check ownership
-        if article.author_id != current_user_id:
-            return jsonify({
-                'success': False,
-                'error': 'You can only edit your own articles',
-                'error_code': 'PERMISSION_DENIED'
-            }), 403
-
-        # Get JSON data
-        data = request.get_json()
-        if not data:
-            return jsonify({
-                'success': False,
-                'error': 'No JSON data provided',
-                'error_code': 'NO_DATA'
-            }), 400
-
-        # Update fields
-        if 'title' in data:
-            title = data['title'].strip()
-            if not title:
-                return jsonify({
-                    'success': False,
-                    'error': 'Title cannot be empty',
-                    'error_code': 'INVALID_TITLE'
-                }), 400
-            article.title = title
-
-        if 'content' in data:
-            content = data['content'].strip()
-            if not content:
-                return jsonify({
-                    'success': False,
-                    'error': 'Content cannot be empty',
-                    'error_code': 'INVALID_CONTENT'
-                }), 400
-            article.content = content
-            article.content_body = content
-
-            # Recalculate reading time
-            word_count = len(content.split())
-            article.reading_time = max(1, round(word_count / 225))
-
-        if 'excerpt' in data:
-            article.excerpt = data['excerpt'].strip()
-
-        if 'category' in data:
-            article.category = data['category'].strip()
-
-        if 'tags' in data:
-            article.tags = data['tags'].strip()
-
-        if 'featured_image' in data:
-            article.featured_image = data['featured_image'].strip()
-            article.featured_image_url = data['featured_image'].strip()
-
-        if 'meta_description' in data:
-            article.meta_description = data['meta_description'].strip()
-
-        if 'status' in data:
-            new_status = data['status']
-            if new_status == 'published' and article.status != 'published':
-                article.status = 'published'
-                article.article_status = 2
-                article.published_at = datetime.utcnow()
-            elif new_status == 'draft':
-                article.status = 'draft'
-                article.article_status = 1
-                article.published_at = None
-            else:
-                article.status = new_status
-
-        if 'featured' in data:
-            article.featured = bool(data['featured'])
-
-        # Update timestamp
-        article.updated_at = datetime.utcnow()
-
-        db.session.commit()
-
-        # Return updated article
-        updated_article = article.to_dict(include_content=True)
-
-        logger.info(f'✅ Article {article_id} updated by user {current_user_id}')
-
-        return jsonify({
-            'success': True,
-            'data': updated_article,
-            'message': 'Article updated successfully'
-        }), 200
-
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f'❌ Error updating article: {str(e)}', exc_info=True)
-        return jsonify({
-            'success': False,
-            'error': f'Failed to update article: {str(e)}',
-            'error_code': 'UPDATE_ERROR'
-        }), 500
-
-
 # ✅ Delete Article
 @bp.route('/<int:article_id>', methods=['DELETE'])
 @jwt_required()
 def delete_article(article_id):
-    """Delete article"""
+    """Delete article (only by author or admin)"""
     try:
         current_user_id = get_user_id_from_jwt()
         if not current_user_id:
@@ -668,8 +820,9 @@ def delete_article(article_id):
                 'error_code': 'ARTICLE_NOT_FOUND'
             }), 404
 
-        # Check ownership
-        if article.author_id != current_user_id:
+        # Check ownership or admin permission
+        user = db.session.query(User).filter_by(user_id=current_user_id).first()
+        if article.author_id != current_user_id and (not user or user.role_id != 1):
             return jsonify({
                 'success': False,
                 'error': 'You can only delete your own articles',
@@ -697,48 +850,6 @@ def delete_article(article_id):
         }), 500
 
 
-# ✅ Debug endpoint (for development)
-@bp.route('/debug/<int:article_id>', methods=['GET'])
-def debug_article_detail(article_id):
-    """Debug endpoint to test article detail without auth"""
-    try:
-        logger.info(f'🔍 Debug: Getting article {article_id}')
-
-        # Test database connection
-        article = db.session.query(Article).filter_by(article_id=article_id).first()
-
-        if not article:
-            return jsonify({
-                'success': False,
-                'error': 'Article not found',
-                'debug_info': {
-                    'article_id': article_id,
-                    'total_articles': db.session.query(Article).count()
-                }
-            }), 404
-
-        # Test serialization
-        article_data = article.to_dict(include_content=True)
-
-        return jsonify({
-            'success': True,
-            'debug': True,
-            'data': article_data,
-            'message': 'Debug endpoint - no auth required'
-        }), 200
-
-    except Exception as e:
-        logger.error(f'❌ Debug error: {str(e)}', exc_info=True)
-        return jsonify({
-            'success': False,
-            'error': f'Debug error: {str(e)}',
-            'debug_info': {
-                'article_id': article_id,
-                'error_type': type(e).__name__
-            }
-        }), 500
-
-
 # ✅ Health check endpoint
 @bp.route('/health', methods=['GET'])
 def articles_health():
@@ -746,6 +857,7 @@ def articles_health():
     try:
         # Test database connection
         article_count = db.session.query(Article).count()
+        pending_count = db.session.query(Article).filter_by(status='pending').count()
 
         return jsonify({
             'success': True,
@@ -753,13 +865,15 @@ def articles_health():
             'status': 'healthy',
             'database': 'connected',
             'total_articles': article_count,
+            'pending_articles': pending_count,
             'endpoints': {
                 'list': 'GET /api/articles',
                 'create': 'POST /api/articles',
                 'detail': 'GET /api/articles/{id}',
                 'update': 'PUT /api/articles/{id}',
                 'delete': 'DELETE /api/articles/{id}',
-                'debug': 'GET /api/articles/debug/{id}',
+                'my_articles': 'GET /api/articles/my-articles',
+                'resubmit': 'POST /api/articles/{id}/resubmit',
                 'health': 'GET /api/articles/health'
             }
         }), 200

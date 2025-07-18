@@ -16,9 +16,20 @@ class SavedArticle(db.Model):
         db.UniqueConstraint('parent_id', 'article_id', name='unique_parent_article_save'),
     )
 
-    # Relationships
-    parent = db.relationship('Parent', backref=db.backref('saved_articles', lazy=True))
-    article = db.relationship('Article', backref=db.backref('saved_by', lazy=True))
+    # ✅ SAFE RELATIONSHIPS - Use different backref names to avoid conflicts
+    parent = db.relationship('Parent', backref=db.backref('parent_saved_articles', lazy=True))
+
+    # ✅ CRITICAL FIX: Don't create backref on Article to avoid 'saved_by' conflicts
+    # Access Article via property instead
+
+    @property
+    def article(self):
+        """Get Article object safely"""
+        try:
+            from app.models.articles_model import Article
+            return Article.query.get(self.article_id)
+        except:
+            return None
 
     def to_dict(self):
         return {
@@ -26,5 +37,10 @@ class SavedArticle(db.Model):
             'parent_id': self.parent_id,
             'article_id': self.article_id,
             'saved_at': self.saved_at.isoformat() if self.saved_at else None,
-            'notes': self.notes
+            'notes': self.notes,
+            'article': self.article.to_dict(include_content=False) if self.article else None,
+            'parent': self.parent.to_dict() if self.parent else None
         }
+
+    def __repr__(self):
+        return f'<SavedArticle {self.saved_id}: Parent {self.parent_id} -> Article {self.article_id}>'

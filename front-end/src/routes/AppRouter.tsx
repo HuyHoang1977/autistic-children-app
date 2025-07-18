@@ -19,6 +19,10 @@ import ArticleDetailPage from "../pages/articles/ArticleDetailPage"
 
 // Admin pages
 import AdminDashboard from "../pages/admin/AdminDashboard"
+import AdminArticlesManagement from "../pages/admin/AdminArticlesManagement"
+
+// ✅ NEW: User article management
+import UserArticleManagement from "../pages/articles/UserArticleManagement"
 
 const AppRouter: React.FC = () => {
   return (
@@ -40,6 +44,13 @@ const AppRouter: React.FC = () => {
             <Route path="/articles" element={<ArticlesListPage />} />
             <Route path="/articles/:id" element={<ArticleDetailPage />} />
 
+            {/* ✅ NEW: User article management route */}
+            <Route path="/my-articles" element={
+              <ProtectedRoute>
+                <UserArticleManagement />
+              </ProtectedRoute>
+            } />
+
             {/* Protected Articles routes */}
             <Route path="/articles/create" element={
               <ProtectedRoute>
@@ -54,10 +65,36 @@ const AppRouter: React.FC = () => {
               </ProtectedRoute>
             } />
 
+            {/* ✅ NEW: Admin Articles Management Route */}
+            <Route path="/admin/articles" element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminArticlesManagement />
+              </ProtectedRoute>
+            } />
+
             {/* ✅ Alternative: Using legacy allowedRoles prop */}
             {/* <Route path="/admin" element={
               <ProtectedRoute allowedRoles={[1]}>
                 <AdminDashboard />
+              </ProtectedRoute>
+            } /> */}
+
+            {/* Future admin routes */}
+            {/* <Route path="/admin/users" element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminUsersManagement />
+              </ProtectedRoute>
+            } /> */}
+
+            {/* <Route path="/admin/comments" element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminCommentsManagement />
+              </ProtectedRoute>
+            } /> */}
+
+            {/* <Route path="/admin/categories" element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminCategoriesManagement />
               </ProtectedRoute>
             } /> */}
 
