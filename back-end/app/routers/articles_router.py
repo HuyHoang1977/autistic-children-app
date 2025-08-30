@@ -267,7 +267,45 @@ def create_article():
 
             logger.info(f'✅ Article created with ID: {article.article_id}, Status: {status}')
 
-            # Get created article with author info for response
+            if category:
+                if create_category_relationship(article.article_id, category):
+                    relationships_created.append(f'category: {category}')
+                    logger.info(f'✅ Category relationship created: {category}')
+
+            if tags:
+                if create_tag_relationships(article.article_id, tags):
+                    relationships_created.append(f'tags: {tags}')
+                    logger.info(f'✅ Tag relationships created: {tags}')
+
+            # Commit relationships
+            if relationships_created:
+                try:
+                    db.session.commit()
+                    logger.info(f'✅ Relationships committed: {", ".join(relationships_created)}')
+                except Exception as rel_error:
+                    logger.warning(f'⚠️ Relationship commit failed: {str(rel_error)}')
+                    # Don't rollback article, just continue
+
+            # ✅ Create notifications for followers if article is published
+            if status == 'published':
+                try:
+                    from app.services.notification_service import NotificationService
+                    notification_service = NotificationService()
+                    notification_result = notification_service.create_new_article_notifications(
+                        article_id=article.article_id,
+                        article_title=article.title,
+                        doctor_user_id=current_user_id
+                    )
+                    if notification_result.get('success'):
+                        logger.info(f'✅ Created {notification_result.get("notifications_created", 0)} notifications for article {article.article_id}')
+                    else:
+                        logger.warning(f'⚠️ Failed to create notifications: {notification_result.get("message", "Unknown error")}')
+                except Exception as notification_error:
+                    logger.warning(f'⚠️ Notification creation failed: {str(notification_error)}')
+                    # Don't fail the entire request, just log the error
+
+            # ✅ Get created article with author info for response
+
             created_article = db.session.query(Article).filter(
                 Article.article_id == article.article_id
             ).first()
@@ -794,6 +832,149 @@ def get_article_detail(article_id):
             'success': False,
             'error': f'Failed to get article: {str(e)}',
             'error_code': 'INTERNAL_ERROR'
+        }), 500
+
+
+# ✅ Update Article
+@bp.route('/<int:article_id>', methods=['PUT'])
+@jwt_required()
+def update_article(article_id):
+    """Update article"""
+    try:
+        current_user_id = get_user_id_from_jwt()
+        if not current_user_id:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid user identity',
+                'error_code': 'INVALID_USER_IDENTITY'
+            }), 422
+
+        # Get existing article
+        article = db.session.query(Article).filter_by(article_id=article_id).first()
+        if not article:
+            return jsonify({
+                'success': False,
+                'error': 'Article not found',
+                'error_code': 'ARTICLE_NOT_FOUND'
+            }), 404
+
+        # Check ownership
+        if article.author_id != current_user_id:
+            return jsonify({
+                'success': False,
+                'error': 'You can only edit your own articles',
+                'error_code': 'PERMISSION_DENIED'
+            }), 403
+
+        # Get JSON data
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No JSON data provided',
+                'error_code': 'NO_DATA'
+            }), 400
+
+        # Update fields
+        if 'title' in data:
+            title = data['title'].strip()
+            if not title:
+                return jsonify({
+                    'success': False,
+                    'error': 'Title cannot be empty',
+                    'error_code': 'INVALID_TITLE'
+                }), 400
+            article.title = title
+
+        if 'content' in data:
+            content = data['content'].strip()
+            if not content:
+                return jsonify({
+                    'success': False,
+                    'error': 'Content cannot be empty',
+                    'error_code': 'INVALID_CONTENT'
+                }), 400
+            article.content = content
+            article.content_body = content
+
+            # Recalculate reading time
+            word_count = len(content.split())
+            article.reading_time = max(1, round(word_count / 225))
+
+        if 'excerpt' in data:
+            article.excerpt = data['excerpt'].strip()
+
+        if 'category' in data:
+            article.category = data['category'].strip()
+
+        if 'tags' in data:
+            article.tags = data['tags'].strip()
+
+        if 'featured_image' in data:
+            article.featured_image = data['featured_image'].strip()
+            article.featured_image_url = data['featured_image'].strip()
+
+        if 'meta_description' in data:
+            article.meta_description = data['meta_description'].strip()
+
+        if 'status' in data:
+            old_status = article.status
+            new_status = data['status']
+            if new_status == 'published' and article.status != 'published':
+                article.status = 'published'
+                article.article_status = 2
+                article.published_at = datetime.utcnow()
+                
+                # Create notifications for followers when article is published
+                try:
+                    from app.services.notification_service import NotificationService
+                    notification_service = NotificationService()
+                    notification_result = notification_service.create_new_article_notifications(
+                        article_id=article.article_id,
+                        article_title=article.title,
+                        doctor_user_id=current_user_id
+                    )
+                    if notification_result.get('success'):
+                        logger.info(f'✅ Created {notification_result.get("notifications_created", 0)} notifications for published article {article.article_id}')
+                    else:
+                        logger.warning(f'⚠️ Failed to create notifications: {notification_result.get("message", "Unknown error")}')
+                except Exception as notification_error:
+                    logger.warning(f'⚠️ Notification creation failed: {str(notification_error)}')
+                    # Don't fail the entire request, just log the error
+                    
+            elif new_status == 'draft':
+                article.status = 'draft'
+                article.article_status = 1
+                article.published_at = None
+            else:
+                article.status = new_status
+
+        if 'featured' in data:
+            article.featured = bool(data['featured'])
+
+        # Update timestamp
+        article.updated_at = datetime.utcnow()
+
+        db.session.commit()
+
+        # Return updated article
+        updated_article = article.to_dict(include_content=True)
+
+        logger.info(f'✅ Article {article_id} updated by user {current_user_id}')
+
+        return jsonify({
+            'success': True,
+            'data': updated_article,
+            'message': 'Article updated successfully'
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'❌ Error updating article: {str(e)}', exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': f'Failed to update article: {str(e)}',
+            'error_code': 'UPDATE_ERROR'
         }), 500
 
 

@@ -6,6 +6,11 @@ from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 from app.extensions import db
 
+from app.routers.doctors_router import doctors_bp
+from app.routers.follow_router import follow_bp
+from app.routers.personal_router import personal_bp
+from app.routers.notification_router import notification_bp
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -267,18 +272,22 @@ def create_app():
         app.register_blueprint(articles_bp, url_prefix='/api/articles')
         logger.info("✅ Articles blueprint registered: /api/articles")
 
-        # ✅ Register optional routes
-        if doctors_available:
-            app.register_blueprint(doctors_bp, url_prefix='/api/doctors')
-            logger.info("✅ Doctors blueprint registered: /api/doctors")
+        # Images routes
+        app.register_blueprint(image_bp, url_prefix='/api/images')
+        logger.info("✅ Images blueprint registered: /api/images")
+        
+        app.register_blueprint(doctors_bp, url_prefix='/api/doctors')
+        logger.info("✅ Doctors blueprint registered: /api/doctors")
+        
+        app.register_blueprint(follow_bp, url_prefix='/api/follow')
+        logger.info("✅ Follow blueprint registered: /api/follow")
+        
+        app.register_blueprint(personal_bp, url_prefix='/api/personal')
+        logger.info("✅ Personal blueprint registered: /api/personal")
+        
+        app.register_blueprint(notification_bp, url_prefix='/api/notifications')
+        logger.info("✅ Notification blueprint registered: /api/notifications")
 
-        if follow_available:
-            app.register_blueprint(follow_bp, url_prefix='/api/follow')
-            logger.info("✅ Follow blueprint registered: /api/follow")
-
-        if image_available:
-            app.register_blueprint(image_bp, url_prefix='/api/images')
-            logger.info("✅ Images blueprint registered: /api/images")
 
         if profile_available:
             app.register_blueprint(profile_bp, url_prefix='/api/profile')
