@@ -6,6 +6,10 @@ from app.extensions import db
 from datetime import datetime
 
 class FollowService:
+    def __init__(self):
+        # Import notification service để tránh circular import
+        from app.services.notification_service import NotificationService
+        self.notification_service = NotificationService()
     def toggle_follow_doctor(self, parent_id, doctor_id):
         """
         Toggle follow/unfollow doctor
@@ -65,6 +69,16 @@ class FollowService:
                     existing_follow.followed_at = datetime.utcnow()
                     db.session.commit()
                     
+                    # Tạo notification cho doctor khi được follow lại
+                    try:
+                        self.notification_service.create_follow_notification(
+                            doctor_id=doctor_id,
+                            parent_id=parent_id
+                        )
+                    except Exception as e:
+                        # Log lỗi nhưng không làm fail toàn bộ request
+                        print(f"Failed to create follow notification: {str(e)}")
+                    
                     return {
                         'success': True,
                         'message': 'Đã theo dõi bác sĩ',
@@ -81,6 +95,16 @@ class FollowService:
                 )
                 db.session.add(new_follow)
                 db.session.commit()
+                
+                # Tạo notification cho doctor khi có người follow mới
+                try:
+                    self.notification_service.create_follow_notification(
+                        doctor_id=doctor_id,
+                        parent_id=parent_id
+                    )
+                except Exception as e:
+                    # Log lỗi nhưng không làm fail toàn bộ request
+                    print(f"Failed to create follow notification: {str(e)}")
                 
                 return {
                     'success': True,

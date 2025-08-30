@@ -289,6 +289,24 @@ def create_article():
                     logger.warning(f'⚠️ Relationship commit failed: {str(rel_error)}')
                     # Don't rollback article, just continue
 
+            # ✅ Create notifications for followers if article is published
+            if status == 'published':
+                try:
+                    from app.services.notification_service import NotificationService
+                    notification_service = NotificationService()
+                    notification_result = notification_service.create_new_article_notifications(
+                        article_id=article.article_id,
+                        article_title=article.title,
+                        doctor_user_id=current_user_id
+                    )
+                    if notification_result.get('success'):
+                        logger.info(f'✅ Created {notification_result.get("notifications_created", 0)} notifications for article {article.article_id}')
+                    else:
+                        logger.warning(f'⚠️ Failed to create notifications: {notification_result.get("message", "Unknown error")}')
+                except Exception as notification_error:
+                    logger.warning(f'⚠️ Notification creation failed: {str(notification_error)}')
+                    # Don't fail the entire request, just log the error
+
             # ✅ Get created article with author info for response
             created_article = db.session.query(Article).filter(
                 Article.article_id == article.article_id
@@ -604,11 +622,30 @@ def update_article(article_id):
             article.meta_description = data['meta_description'].strip()
 
         if 'status' in data:
+            old_status = article.status
             new_status = data['status']
             if new_status == 'published' and article.status != 'published':
                 article.status = 'published'
                 article.article_status = 2
                 article.published_at = datetime.utcnow()
+                
+                # Create notifications for followers when article is published
+                try:
+                    from app.services.notification_service import NotificationService
+                    notification_service = NotificationService()
+                    notification_result = notification_service.create_new_article_notifications(
+                        article_id=article.article_id,
+                        article_title=article.title,
+                        doctor_user_id=current_user_id
+                    )
+                    if notification_result.get('success'):
+                        logger.info(f'✅ Created {notification_result.get("notifications_created", 0)} notifications for published article {article.article_id}')
+                    else:
+                        logger.warning(f'⚠️ Failed to create notifications: {notification_result.get("message", "Unknown error")}')
+                except Exception as notification_error:
+                    logger.warning(f'⚠️ Notification creation failed: {str(notification_error)}')
+                    # Don't fail the entire request, just log the error
+                    
             elif new_status == 'draft':
                 article.status = 'draft'
                 article.article_status = 1

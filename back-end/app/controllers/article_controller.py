@@ -201,7 +201,7 @@ def create_article():
 
         db.session.add(article)
         db.session.commit()
-
+        
         # Get created article with author info
         created_article = db.session.query(Article).join(User).filter(
             Article.article_id == article.article_id
@@ -282,9 +282,25 @@ def update_article(article_id):
 
         if 'status' in data:
             new_status = data['status']
-            if new_status == 'published' and article.status != 'published':
+            old_status = article.status
+            
+            if new_status == 'published' and old_status != 'published':
                 article.publish()
-            elif new_status == 'draft' and article.status == 'published':
+                
+                # Tạo notification cho followers khi article được publish
+                try:
+                    from app.services.notification_service import NotificationService
+                    notification_service = NotificationService()
+                    notification_service.create_new_article_notifications(
+                        article_id=article.article_id,
+                        article_title=article.title,
+                        doctor_user_id=user_id
+                    )
+                except Exception as e:
+                    # Log lỗi nhưng không làm fail toàn bộ request
+                    logger.warning(f"Failed to create article notifications: {str(e)}")
+                    
+            elif new_status == 'draft' and old_status == 'published':
                 article.unpublish()
             else:
                 article.status = new_status

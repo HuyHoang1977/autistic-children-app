@@ -7,6 +7,8 @@ from flask_cors import CORS
 from app.extensions import db
 from app.routers.doctors_router import doctors_bp
 from app.routers.follow_router import follow_bp
+from app.routers.personal_router import personal_bp
+from app.routers.notification_router import notification_bp
 
 # Configure logging
 logging.basicConfig(
@@ -176,6 +178,12 @@ def create_app():
         
         app.register_blueprint(follow_bp, url_prefix='/api/follow')
         logger.info("✅ Follow blueprint registered: /api/follow")
+        
+        app.register_blueprint(personal_bp, url_prefix='/api/personal')
+        logger.info("✅ Personal blueprint registered: /api/personal")
+        
+        app.register_blueprint(notification_bp, url_prefix='/api/notifications')
+        logger.info("✅ Notification blueprint registered: /api/notifications")
 
         # Profile routes (if available)
         if profile_available:
