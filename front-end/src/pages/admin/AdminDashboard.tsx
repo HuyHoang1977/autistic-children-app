@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Users, Search, UserCheck, UserX, Shield, User, Eye, Activity,
   AlertCircle, Trash2, MoreVertical, Settings, RefreshCw, Download,
-  XCircle, Database, AlertTriangle
+  XCircle, Database, AlertTriangle, FileText, BarChart3,
+  MessageSquare, Calendar, ChevronRight, Grid3X3, Menu, X
 } from 'lucide-react';
 
 // ✅ Interface definitions
@@ -77,6 +79,55 @@ interface DeletionInfo {
   warnings: string[];
   can_delete: boolean;
 }
+
+// ✅ NEW: Admin Menu Items
+const adminMenuItems = [
+  {
+    id: 'dashboard',
+    label: 'Tổng quan',
+    icon: BarChart3,
+    path: '/admin',
+    description: 'Thống kê tổng quan hệ thống'
+  },
+  {
+    id: 'users',
+    label: 'Quản lý người dùng',
+    icon: Users,
+    path: '/admin/users',
+    description: 'Quản lý tài khoản người dùng'
+  },
+  {
+    id: 'articles',
+    label: 'Quản lý bài viết',
+    icon: FileText,
+    path: '/admin/articles',
+    description: 'Duyệt và quản lý bài viết'
+  },
+  {
+    id: 'comments',
+    label: 'Quản lý bình luận',
+    icon: MessageSquare,
+    path: '/admin/comments',
+    description: 'Kiểm duyệt bình luận',
+    disabled: true
+  },
+  {
+    id: 'reports',
+    label: 'Báo cáo',
+    icon: BarChart3,
+    path: '/admin/reports',
+    description: 'Báo cáo chi tiết',
+    disabled: true
+  },
+  {
+    id: 'settings',
+    label: 'Cài đặt hệ thống',
+    icon: Settings,
+    path: '/admin/settings',
+    description: 'Cấu hình hệ thống',
+    disabled: true
+  }
+];
 
 // ✅ Enhanced admin service with hard delete
 const adminService = {
@@ -199,6 +250,222 @@ const adminService = {
 
     return await response.json();
   }
+};
+
+// ✅ NEW: Admin Navigation Sidebar
+const AdminSidebar: React.FC<{
+  currentPage: string;
+  onNavigate: (path: string) => void;
+  isOpen: boolean;
+  onToggle: () => void;
+}> = ({ currentPage, onNavigate, isOpen, onToggle }) => {
+  return (
+    <>
+      {/* Mobile backdrop */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={onToggle}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div className={`
+        fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
+        ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+        <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200">
+          <div className="flex items-center gap-2">
+            <Shield className="w-6 h-6 text-blue-600" />
+            <h2 className="text-lg font-semibold text-gray-900">Admin Panel</h2>
+          </div>
+          <button
+            onClick={onToggle}
+            className="lg:hidden p-2 text-gray-500 hover:text-gray-700"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <nav className="mt-4 px-2">
+          <div className="space-y-1">
+            {adminMenuItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = currentPage === item.path;
+              const isDisabled = item.disabled;
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => !isDisabled && onNavigate(item.path)}
+                  disabled={isDisabled}
+                  className={`
+                    w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-colors
+                    ${isActive
+                      ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-500'
+                      : isDisabled
+                      ? 'text-gray-400 cursor-not-allowed'
+                      : 'text-gray-700 hover:bg-gray-50'
+                    }
+                  `}
+                >
+                  <Icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : ''}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">{item.label}</div>
+                    <div className="text-xs text-gray-500 truncate">{item.description}</div>
+                  </div>
+                  {!isDisabled && (
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  )}
+                  {isDisabled && (
+                    <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded">
+                      Soon
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+
+        {/* Quick Actions */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
+          <div className="space-y-2">
+            <button
+              onClick={() => onNavigate('/admin/articles')}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <FileText className="w-4 h-4" />
+              Quản lý bài viết
+            </button>
+            <button
+              onClick={() => window.location.href = '/'}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              <Eye className="w-4 h-4" />
+              Xem trang chủ
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+// ✅ NEW: Quick Action Cards
+const QuickActionCards: React.FC<{
+  onNavigate: (path: string) => void;
+  stats: SimpleStats | null;
+}> = ({ onNavigate, stats }) => {
+  const quickActions = [
+    {
+      title: 'Quản lý bài viết',
+      description: 'Duyệt và quản lý bài viết từ người dùng',
+      icon: FileText,
+      path: '/admin/articles',
+      color: 'blue',
+      stats: stats?.content ? {
+        total: stats.content.total_articles,
+        pending: stats.content.total_articles - stats.content.published_articles
+      } : null
+    },
+    {
+      title: 'Quản lý người dùng',
+      description: 'Quản lý tài khoản và quyền người dùng',
+      icon: Users,
+      path: '/admin/users',
+      color: 'green',
+      stats: stats?.users ? {
+        total: stats.users.total,
+        active: stats.users.active
+      } : null
+    },
+    {
+      title: 'Báo cáo hệ thống',
+      description: 'Xem báo cáo chi tiết và thống kê',
+      icon: BarChart3,
+      path: '/admin/reports',
+      color: 'purple',
+      disabled: true
+    },
+    {
+      title: 'Cài đặt',
+      description: 'Cấu hình hệ thống và tùy chỉnh',
+      icon: Settings,
+      path: '/admin/settings',
+      color: 'gray',
+      disabled: true
+    }
+  ];
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {quickActions.map((action) => {
+        const Icon = action.icon;
+        const isDisabled = action.disabled;
+
+        return (
+          <button
+            key={action.path}
+            onClick={() => !isDisabled && onNavigate(action.path)}
+            disabled={isDisabled}
+            className={`
+              p-6 bg-white rounded-lg border-2 border-gray-200 text-left transition-all duration-200
+              ${isDisabled 
+                ? 'opacity-50 cursor-not-allowed' 
+                : 'hover:border-blue-300 hover:shadow-md transform hover:-translate-y-1'
+              }
+            `}
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div className={`
+                w-12 h-12 rounded-lg flex items-center justify-center
+                ${action.color === 'blue' ? 'bg-blue-100' : 
+                  action.color === 'green' ? 'bg-green-100' : 
+                  action.color === 'purple' ? 'bg-purple-100' : 'bg-gray-100'}
+              `}>
+                <Icon className={`w-6 h-6 ${
+                  action.color === 'blue' ? 'text-blue-600' : 
+                  action.color === 'green' ? 'text-green-600' : 
+                  action.color === 'purple' ? 'text-purple-600' : 'text-gray-600'
+                }`} />
+              </div>
+
+              {isDisabled && (
+                <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded">
+                  Coming Soon
+                </span>
+              )}
+            </div>
+
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">{action.title}</h3>
+            <p className="text-sm text-gray-600 mb-4">{action.description}</p>
+
+            {action.stats && (
+              <div className="flex items-center gap-4 text-sm">
+                <div className="flex items-center gap-1">
+                  <span className="text-gray-500">Tổng:</span>
+                  <span className="font-medium">{action.stats.total}</span>
+                </div>
+                {action.stats.pending && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-gray-500">Chờ:</span>
+                    <span className="font-medium text-yellow-600">{action.stats.pending}</span>
+                  </div>
+                )}
+                {action.stats.active && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-gray-500">Hoạt động:</span>
+                    <span className="font-medium text-green-600">{action.stats.active}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
 };
 
 // ✅ Enhanced Delete Confirmation Modal with deletion options
@@ -664,12 +931,17 @@ const UserRow: React.FC<{
   );
 };
 
-// ✅ MAIN COMPONENT - Enhanced Admin Dashboard
+// ✅ MAIN COMPONENT - Enhanced Admin Dashboard with Navigation
 const AdminDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [users, setUsers] = useState<SimpleUser[]>([]);
   const [stats, setStats] = useState<SimpleStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [currentView, setCurrentView] = useState<'overview' | 'users'>('overview');
+
+  // ... (rest of the existing state remains the same)
   const [pagination, setPagination] = useState({
     current_page: 1,
     per_page: 20,
@@ -704,6 +976,17 @@ const AdminDashboard: React.FC = () => {
     sort_order: 'desc'
   });
 
+  // Navigation handler
+  const handleNavigation = (path: string) => {
+    if (path === '/admin' || path === '/admin/users') {
+      setCurrentView(path === '/admin' ? 'overview' : 'users');
+      setSidebarOpen(false);
+    } else {
+      navigate(path);
+    }
+  };
+
+  // ... (rest of the existing useEffect hooks and functions remain the same)
   // Get current user ID from token
   useEffect(() => {
     try {
@@ -931,233 +1214,347 @@ const AdminDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <AdminSidebar
+        currentPage={currentView === 'overview' ? '/admin' : '/admin/users'}
+        onNavigate={handleNavigation}
+        isOpen={sidebarOpen}
+        onToggle={() => setSidebarOpen(!sidebarOpen)}
+      />
+
+      {/* Main Content */}
+      <div className="flex-1 lg:ml-0">
+        {/* Mobile Header */}
+        <div className="lg:hidden bg-white border-b border-gray-200 px-4 py-3">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                <Shield className="w-8 h-8 text-blue-600" />
-                Enhanced Admin Dashboard
-              </h1>
-              <p className="text-gray-600 mt-2">Quản lý người dùng với xóa hoàn toàn</p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={handleRefresh}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                title="Làm mới dữ liệu"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Làm mới
-              </button>
-            </div>
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="p-2 text-gray-500 hover:text-gray-700"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+            <h1 className="text-lg font-semibold text-gray-900">Admin Dashboard</h1>
+            <div className="w-10" /> {/* Spacer */}
           </div>
         </div>
 
-        {/* Stats Cards */}
-        {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <StatsCard
-              title="Tổng người dùng"
-              value={stats.users.total}
-              icon={Users}
-              change={12}
-              changeType="increase"
-            />
-            <StatsCard
-              title="Người dùng hoạt động"
-              value={stats.users.active}
-              icon={UserCheck}
-              change={8}
-              changeType="increase"
-            />
-            <StatsCard
-              title="Bác sĩ"
-              value={stats.users_by_role.doctors}
-              icon={Activity}
-              change={5}
-              changeType="increase"
-            />
-            <StatsCard
-              title="Bài viết"
-              value={stats.content.total_articles}
-              icon={Eye}
-              change={15}
-              changeType="increase"
-            />
-          </div>
-        )}
+        {/* Page Content */}
+        <div className="p-4 lg:p-8">
+          {currentView === 'overview' ? (
+            // Overview Page
+            <>
+              {/* Header */}
+              <div className="mb-8">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+                      <BarChart3 className="w-8 h-8 text-blue-600" />
+                      Admin Dashboard
+                    </h1>
+                    <p className="text-gray-600 mt-2">Tổng quan và quản lý hệ thống</p>
+                  </div>
+                  <button
+                    onClick={handleRefresh}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    title="Làm mới dữ liệu"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Làm mới
+                  </button>
+                </div>
+              </div>
 
-        {/* Users Table */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 relative">
-          {/* Table Header with Filters */}
-          <div className="px-6 py-4 border-b border-gray-200">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <h2 className="text-lg font-medium text-gray-900 flex items-center gap-2">
-                <Users className="w-5 h-5" />
-                Danh sách người dùng
-                <span className="text-sm text-gray-500">({pagination.total})</span>
-              </h2>
-
-              <div className="flex flex-col sm:flex-row gap-3">
-                {/* Search */}
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <input
-                    type="text"
-                    placeholder="Tìm kiếm người dùng..."
-                    value={filters.search}
-                    onChange={(e) => handleFilterChange('search', e.target.value)}
-                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full sm:w-64"
+              {/* Stats Cards */}
+              {stats && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                  <StatsCard
+                    title="Tổng người dùng"
+                    value={stats.users.total}
+                    icon={Users}
+                    change={12}
+                    changeType="increase"
+                  />
+                  <StatsCard
+                    title="Người dùng hoạt động"
+                    value={stats.users.active}
+                    icon={UserCheck}
+                    change={8}
+                    changeType="increase"
+                  />
+                  <StatsCard
+                    title="Bác sĩ"
+                    value={stats.users_by_role.doctors}
+                    icon={Activity}
+                    change={5}
+                    changeType="increase"
+                  />
+                  <StatsCard
+                    title="Bài viết"
+                    value={stats.content.total_articles}
+                    icon={FileText}
+                    change={15}
+                    changeType="increase"
                   />
                 </div>
+              )}
 
-                {/* Role Filter */}
-                <select
-                  value={filters.role}
-                  onChange={(e) => handleFilterChange('role', e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Tất cả vai trò</option>
-                  <option value="admin">Admin</option>
-                  <option value="doctor">Bác sĩ</option>
-                  <option value="parent">Phụ huynh</option>
-                </select>
-
-                {/* Status Filter */}
-                <select
-                  value={filters.status}
-                  onChange={(e) => handleFilterChange('status', e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Tất cả trạng thái</option>
-                  <option value="active">Hoạt động</option>
-                  <option value="inactive">Không hoạt động</option>
-                </select>
+              {/* Quick Actions */}
+              <div className="mb-8">
+                <h2 className="text-xl font-semibold text-gray-900 mb-6">Truy cập nhanh</h2>
+                <QuickActionCards onNavigate={handleNavigation} stats={stats} />
               </div>
-            </div>
-          </div>
 
-          {/* Table */}
-          <div className="overflow-x-auto relative">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50 sticky top-0 z-10">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Người dùng
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Liên hệ
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Vai trò
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Trạng thái
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ngày tạo
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Hoạt động cuối
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider relative">
-                    Thao tác
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200 relative">
-                {loading ? (
-                  [...Array(5)].map((_, i) => (
-                    <tr key={i}>
-                      <td colSpan={7} className="px-6 py-4">
-                        <div className="animate-pulse flex space-x-4">
-                          <div className="rounded-full bg-gray-200 h-10 w-10"></div>
-                          <div className="flex-1 space-y-2 py-1">
-                            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : users.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
-                      <div className="flex flex-col items-center">
-                        <Users className="w-12 h-12 text-gray-300 mb-4" />
-                        <p className="text-lg font-medium text-gray-900 mb-2">Không tìm thấy người dùng nào</p>
-                        <p className="text-gray-500">
-                          {filters.search || filters.role || filters.status
-                            ? 'Thử thay đổi bộ lọc để xem kết quả khác'
-                            : 'Hệ thống chưa có người dùng nào'
-                          }
-                        </p>
+              {/* Recent Activity or Summary */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Hoạt động gần đây</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+                    <FileText className="w-5 h-5 text-blue-600" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Có {stats?.content.total_articles || 0} bài viết cần duyệt</p>
+                      <p className="text-xs text-gray-500">Truy cập quản lý bài viết để xem chi tiết</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+                    <Users className="w-5 h-5 text-green-600" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{stats?.users.active || 0} người dùng đang hoạt động</p>
+                      <p className="text-xs text-gray-500">Tăng {stats?.users.recent_signups || 0} người dùng mới tuần này</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            // Users Management Page
+            <>
+              {/* Header */}
+              <div className="mb-8">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+                      <Users className="w-8 h-8 text-blue-600" />
+                      Quản lý người dùng
+                    </h1>
+                    <p className="text-gray-600 mt-2">Quản lý tài khoản và quyền người dùng</p>
+                  </div>
+                  <button
+                    onClick={handleRefresh}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    title="Làm mới dữ liệu"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Làm mới
+                  </button>
+                </div>
+              </div>
+
+              {/* Stats Cards */}
+              {stats && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                  <StatsCard
+                    title="Tổng người dùng"
+                    value={stats.users.total}
+                    icon={Users}
+                    change={12}
+                    changeType="increase"
+                  />
+                  <StatsCard
+                    title="Người dùng hoạt động"
+                    value={stats.users.active}
+                    icon={UserCheck}
+                    change={8}
+                    changeType="increase"
+                  />
+                  <StatsCard
+                    title="Bác sĩ"
+                    value={stats.users_by_role.doctors}
+                    icon={Activity}
+                    change={5}
+                    changeType="increase"
+                  />
+                  <StatsCard
+                    title="Bài viết"
+                    value={stats.content.total_articles}
+                    icon={Eye}
+                    change={15}
+                    changeType="increase"
+                  />
+                </div>
+              )}
+
+              {/* Users Table */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 relative">
+                {/* Table Header with Filters */}
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <h2 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+                      <Users className="w-5 h-5" />
+                      Danh sách người dùng
+                      <span className="text-sm text-gray-500">({pagination.total})</span>
+                    </h2>
+
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      {/* Search */}
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <input
+                          type="text"
+                          placeholder="Tìm kiếm người dùng..."
+                          value={filters.search}
+                          onChange={(e) => handleFilterChange('search', e.target.value)}
+                          className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full sm:w-64"
+                        />
                       </div>
-                    </td>
-                  </tr>
-                ) : (
-                  users.map((user) => (
-                    <UserRow
-                      key={user.user_id}
-                      user={user}
-                      onStatusChange={handleStatusChange}
-                      onDelete={handleDeleteUser}
-                      currentUserId={currentUserId}
-                    />
-                  ))
+
+                      {/* Role Filter */}
+                      <select
+                        value={filters.role}
+                        onChange={(e) => handleFilterChange('role', e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Tất cả vai trò</option>
+                        <option value="admin">Admin</option>
+                        <option value="doctor">Bác sĩ</option>
+                        <option value="parent">Phụ huynh</option>
+                      </select>
+
+                      {/* Status Filter */}
+                      <select
+                        value={filters.status}
+                        onChange={(e) => handleFilterChange('status', e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Tất cả trạng thái</option>
+                        <option value="active">Hoạt động</option>
+                        <option value="inactive">Không hoạt động</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Table */}
+                <div className="overflow-x-auto relative">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50 sticky top-0 z-10">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Người dùng
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Liên hệ
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Vai trò
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Trạng thái
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Ngày tạo
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Hoạt động cuối
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider relative">
+                          Thao tác
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200 relative">
+                      {loading ? (
+                        [...Array(5)].map((_, i) => (
+                          <tr key={i}>
+                            <td colSpan={7} className="px-6 py-4">
+                              <div className="animate-pulse flex space-x-4">
+                                <div className="rounded-full bg-gray-200 h-10 w-10"></div>
+                                <div className="flex-1 space-y-2 py-1">
+                                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      ) : users.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                            <div className="flex flex-col items-center">
+                              <Users className="w-12 h-12 text-gray-300 mb-4" />
+                              <p className="text-lg font-medium text-gray-900 mb-2">Không tìm thấy người dùng nào</p>
+                              <p className="text-gray-500">
+                                {filters.search || filters.role || filters.status
+                                  ? 'Thử thay đổi bộ lọc để xem kết quả khác'
+                                  : 'Hệ thống chưa có người dùng nào'
+                                }
+                              </p>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        users.map((user) => (
+                          <UserRow
+                            key={user.user_id}
+                            user={user}
+                            onStatusChange={handleStatusChange}
+                            onDelete={handleDeleteUser}
+                            currentUserId={currentUserId}
+                          />
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination */}
+                {pagination.total_pages > 1 && (
+                  <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-gray-50">
+                    <div className="text-sm text-gray-700">
+                      Hiển thị {((pagination.current_page - 1) * pagination.per_page) + 1} đến {' '}
+                      {Math.min(pagination.current_page * pagination.per_page, pagination.total)} trong số {pagination.total} kết quả
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => loadUsers(pagination.current_page - 1)}
+                        disabled={pagination.current_page === 1}
+                        className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors bg-white"
+                      >
+                        Trước
+                      </button>
+                      <span className="px-3 py-1 text-sm bg-white border border-gray-300 rounded">
+                        Trang {pagination.current_page} / {pagination.total_pages}
+                      </span>
+                      <button
+                        onClick={() => loadUsers(pagination.current_page + 1)}
+                        disabled={!pagination.has_more}
+                        className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors bg-white"
+                      >
+                        Sau
+                      </button>
+                    </div>
+                  </div>
                 )}
-              </tbody>
-            </table>
-          </div>
+              </div>
 
-          {/* Pagination */}
-          {pagination.total_pages > 1 && (
-            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-gray-50">
-              <div className="text-sm text-gray-700">
-                Hiển thị {((pagination.current_page - 1) * pagination.per_page) + 1} đến {' '}
-                {Math.min(pagination.current_page * pagination.per_page, pagination.total)} trong số {pagination.total} kết quả
+              {/* Enhanced Security Notice */}
+              <div className="mt-8 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <Shield className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h4 className="text-sm font-medium text-yellow-800 mb-1">Lưu ý bảo mật và xóa dữ liệu</h4>
+                    <div className="text-sm text-yellow-700 space-y-1">
+                      <p>• <strong>Vô hiệu hóa (Soft Delete):</strong> Tài khoản bị vô hiệu hóa nhưng dữ liệu được giữ lại, có thể khôi phục</p>
+                      <p>• <strong>Xóa hoàn toàn (Hard Delete):</strong> Xóa vĩnh viễn người dùng và TẤT CẢ dữ liệu liên quan - KHÔNG THỂ HOÀN TÁC!</p>
+                      <p>• Không thể xóa tài khoản của chính mình</p>
+                      <p>• Tất cả thao tác đều được ghi log và có thể kiểm tra</p>
+                      <p>• <strong>Cảnh báo:</strong> Hard Delete sẽ xóa articles, comments, appointments, follows, likes, saves và tất cả dữ liệu liên quan</p>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => loadUsers(pagination.current_page - 1)}
-                  disabled={pagination.current_page === 1}
-                  className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors bg-white"
-                >
-                  Trước
-                </button>
-                <span className="px-3 py-1 text-sm bg-white border border-gray-300 rounded">
-                  Trang {pagination.current_page} / {pagination.total_pages}
-                </span>
-                <button
-                  onClick={() => loadUsers(pagination.current_page + 1)}
-                  disabled={!pagination.has_more}
-                  className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors bg-white"
-                >
-                  Sau
-                </button>
-              </div>
-            </div>
+            </>
           )}
-        </div>
-
-        {/* Enhanced Security Notice */}
-        <div className="mt-8 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <Shield className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
-            <div>
-              <h4 className="text-sm font-medium text-yellow-800 mb-1">Lưu ý bảo mật và xóa dữ liệu</h4>
-              <div className="text-sm text-yellow-700 space-y-1">
-                <p>• <strong>Vô hiệu hóa (Soft Delete):</strong> Tài khoản bị vô hiệu hóa nhưng dữ liệu được giữ lại, có thể khôi phục</p>
-                <p>• <strong>Xóa hoàn toàn (Hard Delete):</strong> Xóa vĩnh viễn người dùng và TẤT CẢ dữ liệu liên quan - KHÔNG THỂ HOÀN TÁC!</p>
-                <p>• Không thể xóa tài khoản của chính mình</p>
-                <p>• Tất cả thao tác đều được ghi log và có thể kiểm tra</p>
-                <p>• <strong>Cảnh báo:</strong> Hard Delete sẽ xóa articles, comments, appointments, follows, likes, saves và tất cả dữ liệu liên quan</p>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -1175,4 +1572,4 @@ const AdminDashboard: React.FC = () => {
   );
 };
 
-export default AdminDashboard
+export default AdminDashboard;
